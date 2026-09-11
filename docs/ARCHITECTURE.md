@@ -23,12 +23,13 @@ The planner is not an authority. MongoDB is not an identity authority. Capabilit
 - `EnsAuthorizationService` converts those records into a fail-closed authorization decision.
 - `AuthorizationOrchestrator` sequences ENS and `ConfidentialPolicyProvider`.
 - `TaskExecutionService` owns task state transitions, anti-replay, proposal construction, authorization, execution, and persistence.
-- `CapabilityProvider` isolates Bazantic from local deterministic fixtures.
+- `BazanticRecipeService` accepts authenticated catalog proposals, owns their one-time authorization, and records idempotent execution receipts.
+- `CapabilityProvider` remains the local dashboard abstraction; Recipe mode disables its direct search and execution methods.
 - `TaskPlanner` isolates Gemini structured output through Vertex AI Express Mode from the local development planner.
 - `EnsAdminService` owns protected record writes and record-specific EAC delegation.
 - `AuditService` verifies the deployed recorder and writes sanitized lifecycle events; in hackathon mode, a missing or failed audit write stops the task.
 
-`HACKATHON_MODE=true` rejects startup unless the planner is Gemini through Vertex AI, policy provider is Chainlink, capability provider is Bazantic, and the deployed audit recorder is configured.
+`HACKATHON_MODE=true` rejects startup unless the planner is Gemini through Vertex AI, policy provider is Chainlink, capability provider is `recipe`, complete Bazantic Recipe configuration is present, and the deployed audit recorder is configured.
 
 ## Data boundary
 

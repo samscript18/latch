@@ -38,7 +38,7 @@ ENSv2 is the source of truth for the agent wallet and the organization-owned `la
 
 ### Bazantic
 
-`CapabilityProvider` isolates search and exact-action execution. The real Gateway/Recipe adapter is configurable; dashboard setup must be verified against current hackathon access before claiming evidence. The local adapter is visibly marked and forbidden in hackathon mode; see [Bazantic setup](docs/BAZANTIC.md).
+Bazantic is the top-level bounty orchestrator: its Recipe calls a real catalog service, submits the immutable result to authenticated LATCH Gateway routes, executes only after approval, and reports the receipt for audit. `CAPABILITY_PROVIDER=recipe` disables direct LATCH search/execution so the final path cannot recurse or fall back to fixtures; see [Bazantic setup](docs/BAZANTIC.md).
 
 ## Demo scenarios
 
@@ -91,7 +91,7 @@ Configure the current official CRE toolchain and confidential secret reference, 
 
 ## Bazantic setup
 
-Create the Gateway and Recipe in the currently available Bazantic dashboard, map the two operations documented by LATCH, and configure the resulting endpoint, recipe ID, and API key. Exact schemas and the anti-probing recipe instructions are in [the Bazantic guide](docs/BAZANTIC.md).
+Create the Gateway and Recipe in the currently available Bazantic dashboard, connect a real catalog service, and map the three authenticated proposal operations documented by LATCH. Exact schemas and anti-probing instructions are in [the Bazantic guide](docs/BAZANTIC.md).
 
 Run evidence checks after configuring live integrations:
 

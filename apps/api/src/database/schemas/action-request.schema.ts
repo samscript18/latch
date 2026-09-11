@@ -13,7 +13,14 @@ export class ActionRequest {
   @Prop({ required: true, type: String }) actionType!: string;
   @Prop({ min: 1, required: true, type: Number }) quantity!: number;
   @Prop({ required: true, type: String }) item!: string;
+  @Prop({ type: String }) productId?: string;
   @Prop({ required: true, type: String }) vendor!: string;
+  @Prop({ enum: ["USD"], type: String }) currency?: "USD";
+  @Prop({
+    enum: ["local-fixture", "bazantic-outbound", "bazantic-recipe"],
+    type: String,
+  })
+  source?: "local-fixture" | "bazantic-outbound" | "bazantic-recipe";
   @Prop({ min: 0, required: true, type: Number }) amountCents!: number;
   @Prop({ default: false, required: true, type: Boolean })
   ensAuthorized!: boolean;
@@ -23,11 +30,13 @@ export class ActionRequest {
   @Prop({ type: String }) policyVersion?: string;
   @Prop({ type: String }) executionReference?: string;
   @Prop({ type: String }) transactionHash?: string;
+  @Prop({ index: true, type: String }) proposalDigest?: string;
   @Prop({
     enum: [
       "proposed",
       "authorizing",
       "authorized",
+      "executing",
       "consumed",
       "blocked",
       "failed",
@@ -39,10 +48,12 @@ export class ActionRequest {
     | "proposed"
     | "authorizing"
     | "authorized"
+    | "executing"
     | "consumed"
     | "blocked"
     | "failed";
-  @Prop({ required: true, type: String }) authorizationId!: string;
+  @Prop({ required: true, type: String, unique: true })
+  authorizationId!: string;
   @Prop({ default: false, required: true, type: Boolean }) consumed!: boolean;
 
   createdAt!: Date;

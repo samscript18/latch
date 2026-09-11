@@ -64,7 +64,7 @@ export const EnvironmentSchema = z
       z.string().min(1).optional(),
     ),
     POLICY_PROVIDER: z.enum(["local", "chainlink"]).default("local"),
-    CAPABILITY_PROVIDER: z.enum(["local", "bazantic"]).default("local"),
+    CAPABILITY_PROVIDER: z.enum(["local", "recipe"]).default("local"),
     CRE_ENVIRONMENT: z.string().optional(),
     CRE_POLICY_SECRET_REFERENCE: z.string().optional(),
     CRE_WORKFLOW_URL: optionalUrl,
@@ -117,17 +117,17 @@ export const EnvironmentSchema = z
     }
     if (
       environment.HACKATHON_MODE &&
-      environment.CAPABILITY_PROVIDER !== "bazantic"
+      environment.CAPABILITY_PROVIDER !== "recipe"
     ) {
       context.addIssue({
         code: "custom",
-        message: "HACKATHON_MODE requires CAPABILITY_PROVIDER=bazantic",
+        message: "HACKATHON_MODE requires CAPABILITY_PROVIDER=recipe",
         path: ["CAPABILITY_PROVIDER"],
       });
     }
     if (
       environment.HACKATHON_MODE &&
-      environment.CAPABILITY_PROVIDER === "bazantic" &&
+      environment.CAPABILITY_PROVIDER === "recipe" &&
       (!environment.BAZANTIC_GATEWAY_URL ||
         !environment.BAZANTIC_RECIPE_ID ||
         !environment.BAZANTIC_API_KEY)
@@ -135,7 +135,7 @@ export const EnvironmentSchema = z
       context.addIssue({
         code: "custom",
         message:
-          "HACKATHON_MODE requires complete Bazantic Gateway configuration",
+          "HACKATHON_MODE requires complete Bazantic Recipe configuration",
         path: ["BAZANTIC_GATEWAY_URL"],
       });
     }

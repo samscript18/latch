@@ -129,7 +129,11 @@ export class TaskExecutionService {
         actionType: plan.capability,
         quantity: plan.quantity,
         item: product.name,
+        productId: product.id,
         vendor: product.vendor,
+        currency: product.currency,
+        source:
+          product.source === "bazantic" ? "bazantic-outbound" : "local-fixture",
         amountCents: totalAmountCents,
         ensAuthorized: false,
         policyAuthorized: false,

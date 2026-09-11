@@ -12,6 +12,7 @@ import { TasksModule } from "../tasks/tasks.module.js";
 import { IntegrationsModule } from "../integrations/integrations.module.js";
 import { OrganizationsModule } from "../organizations/organizations.module.js";
 import { ActivityModule } from "../activity/activity.module.js";
+import { BazanticModule } from "../bazantic/bazantic.module.js";
 
 const repositoryEnvironmentFiles = [
   fileURLToPath(new URL("../../../../.env.local", import.meta.url)),
@@ -36,6 +37,7 @@ const repositoryEnvironmentFiles = [
     OrganizationsModule,
     IntegrationsModule,
     ActivityModule,
+    BazanticModule,
   ],
 })
 export class AppModule {}

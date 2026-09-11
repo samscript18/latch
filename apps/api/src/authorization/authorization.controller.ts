@@ -39,7 +39,11 @@ export class AuthorizationController {
     if (!request.success)
       throw new BadRequestException("A valid authorization ID is required");
     const action = await this.actions.findOneAndUpdate(
-      { authorizationId: request.data.authorizationId, status: "proposed" },
+      {
+        authorizationId: request.data.authorizationId,
+        source: { $ne: "bazantic-recipe" },
+        status: "proposed",
+      },
       { $set: { status: "authorizing" } },
       { new: true },
     );

@@ -57,16 +57,16 @@ export class IntegrationsService {
       capability: {
         provider: capabilityProvider,
         state:
-          capabilityProvider === "bazantic" &&
+          capabilityProvider === "recipe" &&
           bazanticUrl &&
           recipeId &&
           bazanticApiKey
             ? "configured"
-            : capabilityProvider === "bazantic"
+            : capabilityProvider === "recipe"
               ? "missing_configuration"
               : "local_development",
         validForHackathon:
-          capabilityProvider === "bazantic" &&
+          capabilityProvider === "recipe" &&
           Boolean(bazanticUrl && recipeId && bazanticApiKey),
         gateway: bazanticUrl ?? null,
         recipeId: recipeId ?? null,
