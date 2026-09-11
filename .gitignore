@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.next/
+coverage/
+packages/contracts/cache/
+packages/contracts/out/
+packages/contracts/broadcast/
+evidence/**/*.secret.*
+
+# Local agent instructions and TypeScript tests are intentionally not committed.
+AGENTS.md
+**/AGENTS.md
+**/CLAUDE.md
+**/*.test.ts
