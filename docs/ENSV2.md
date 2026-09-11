@@ -67,6 +67,29 @@ In a browser wallet:
 The value written to `DEMO_ORG_ENS` is the complete normalized name, for
 example `latch-acme-2026.eth`, without a URL or trailing dot.
 
+#### Direct-contract fallback
+
+If the hackathon app's relayer cannot confirm its commit transaction, use the
+repository's direct EOA flow. It targets only the ETHOnline deployment's
+`ETHRegistrar` and open-mint `MockUSDC`, stores the commitment secret in an
+ignored mode-0600 evidence file, and never prints it:
+
+```bash
+# Read-only availability, price, balance, and commitment-window check
+npm run ens:register -- --label=latchsecurity
+
+# Mint MockUSDC if needed, approve the exact fee, and commit
+npm run ens:register -- --label=latchsecurity --execute
+
+# After the reported minimum age (currently 60 seconds), register
+npm run ens:register -- --label=latchsecurity --register
+```
+
+The flow initially uses zero addresses for subregistry and resolver as allowed
+by the registrar. Configure both deliberately after registration and before
+creating the two agent identities. Do not remove
+`evidence/ens/registration.secret.json` between commit and register.
+
 ### 3. Create organization-controlled agent identities
 
 Create these children in the parent's subregistry:
@@ -93,10 +116,10 @@ For each child:
 
 Use this mapping:
 
-| Child | Address record | Protected role | Protected capability |
-| --- | --- | --- | --- |
-| `procurement.<parent>` | `DEMO_PROCUREMENT_AGENT_WALLET` | `procurement` | `procurement.purchase` |
-| `travel.<parent>` | `DEMO_TRAVEL_AGENT_WALLET` | `travel` | `travel.booking` |
+| Child                  | Address record                  | Protected role | Protected capability   |
+| ---------------------- | ------------------------------- | -------------- | ---------------------- |
+| `procurement.<parent>` | `DEMO_PROCUREMENT_AGENT_WALLET` | `procurement`  | `procurement.purchase` |
+| `travel.<parent>`      | `DEMO_TRAVEL_AGENT_WALLET`      | `travel`       | `travel.booking`       |
 
 Do not manually place a spending threshold, vendor allowlist, or other private
 policy value in ENS.
