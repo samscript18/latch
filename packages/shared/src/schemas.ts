@@ -64,6 +64,7 @@ export const AuthorizationResponseSchema = z.object({
   stage: z.enum(["ens", "policy", "capability"]),
   code: DenialCodeSchema.optional(),
   message: z.string().min(1),
+  policyVersion: z.string().trim().min(1).max(128).optional(),
 });
 
 export type PlannedAction = z.infer<typeof PlannedActionSchema>;

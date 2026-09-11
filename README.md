@@ -15,8 +15,9 @@ LATCH treats an AI agent as a digital employee: an organization assigns an ident
 ## How it works
 
 ```text
-Prompt -> validated plan -> provider price -> fresh ENSv2 authorization
-       -> Chainlink confidential policy -> Bazantic execution -> public-safe audit
+Prompt -> validated plan -> provider price -> onchain request audit
+       -> fresh ENSv2 authorization -> Chainlink confidential policy
+       -> onchain authorization audit -> Bazantic execution -> onchain execution audit
 ```
 
 The planner cannot set roles or verdicts, MongoDB snapshots cannot authorize, and public routes cannot invoke a capability directly. A task version and authorization ID are single-use.
@@ -62,7 +63,7 @@ The demo workspace is at `/demo`, its sanitized audit feed at `/demo/activity`, 
 
 ## Environment variables
 
-Copy `.env.example` and fill only the integrations you intend to run. Browser-exposed values are limited to `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SEPOLIA_RPC_URL`. MongoDB, signer material, the Vertex AI key, CRE secret reference, and Bazantic API key remain server-only. The Gemini planner is called through Vertex AI Express Mode, not the Gemini Developer API. `HACKATHON_MODE=true` rejects startup unless Gemini through Vertex AI, Chainlink, and Bazantic providers are selected and the required live endpoint/credential configuration is complete; it never silently falls back to local providers.
+Copy `.env.example` and fill only the integrations you intend to run. Browser-exposed values are limited to `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SEPOLIA_RPC_URL`. MongoDB, signer material, the Vertex AI key, CRE secret reference, Bazantic API key, and audit recorder address remain server-only. The Gemini planner is called through Vertex AI Express Mode, not the Gemini Developer API. `HACKATHON_MODE=true` rejects startup unless Gemini through Vertex AI, Chainlink, and Bazantic providers are selected, a deployed audit recorder is configured, and the required live endpoint/credential configuration is complete; it never silently falls back to local providers.
 
 ## Running the apps
 
@@ -97,6 +98,7 @@ Run evidence checks after configuring live integrations:
 ```bash
 npm run verify:ens
 npm run verify:chainlink
+npm run verify:audit
 npm run verify:demo
 ```
 
@@ -104,7 +106,7 @@ See the [demo runbook](docs/DEMO.md), [architecture](docs/ARCHITECTURE.md), and 
 
 ## Smart contract
 
-`packages/contracts` contains the small Foundry-based `LatchAudit` event recorder and deployment script. Events contain hashes/opaque references, never private policy. Scripts prepare deployment but do not deploy the application or contract automatically.
+`packages/contracts` contains the small Foundry-based `LatchAudit` event recorder and deployment script. The backend records requested, authorized, blocked, and executed stages in transaction order and refuses to execute when a required audit write fails. Events contain hashes/opaque references, never private policy. `npm run verify:audit` verifies the deployment and recorder; add `-- --execute` to emit a sanitized requested/blocked smoke pair.
 
 ## Project structure
 

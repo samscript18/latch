@@ -8,6 +8,7 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import { publicDenialMessages, type TaskStatus } from "@latch/shared";
 import type { Model } from "mongoose";
+import { AuditService } from "../audit/audit.service.js";
 import { AuthorizationOrchestrator } from "../authorization/authorization.orchestrator.js";
 import { capabilityRegistry } from "../capabilities/capability-registry.js";
 import {
@@ -58,6 +59,8 @@ export class TaskExecutionService {
     private readonly capability: CapabilityProvider,
     @Inject(AuthorizationOrchestrator)
     private readonly authorization: AuthorizationOrchestrator,
+    @Inject(AuditService)
+    private readonly audit: AuditService,
   ) {}
 
   async create(agentEnsName: string, prompt: string) {
@@ -136,6 +139,13 @@ export class TaskExecutionService {
       });
       action = proposedAction;
 
+      const requestedAuditHash = await this.audit.recordRequested({
+        taskId: task._id.toString(),
+        agentName: agent.ensName,
+        capability: plan.capability,
+        amountCents: totalAmountCents,
+      });
+
       await this.transition(task, "ens_checking");
       await this.record(
         task,
@@ -143,7 +153,12 @@ export class TaskExecutionService {
         "ENS_CHECKING",
         "started",
         "Verifying agent authority from fresh ENS records.",
-        { capability: plan.capability },
+        {
+          capability: plan.capability,
+          ...(requestedAuditHash
+            ? { auditTransactionHash: requestedAuditHash }
+            : {}),
+        },
         proposedAction,
       );
       const verdict = await this.authorization.authorize(
@@ -183,7 +198,13 @@ export class TaskExecutionService {
 
       proposedAction.ensAuthorized = verdict.stage === "policy";
       if (!verdict.authorized) {
-        proposedAction.publicDenialCode = verdict.code;
+        const denialCode = verdict.code ?? "EXECUTION_FAILED";
+        const blockedAuditHash = await this.audit.recordBlocked({
+          taskId: task._id.toString(),
+          agentName: agent.ensName,
+          reasonCode: denialCode,
+        });
+        proposedAction.publicDenialCode = denialCode;
         proposedAction.status = "blocked";
         await proposedAction.save();
         await this.transition(task, "blocked");
@@ -194,15 +215,27 @@ export class TaskExecutionService {
           "blocked",
           verdict.message,
           {
-            code: verdict.code,
+            code: denialCode,
             stage: verdict.stage,
+            ...(blockedAuditHash
+              ? { auditTransactionHash: blockedAuditHash }
+              : {}),
           },
           proposedAction,
         );
-        return this.result(task, proposedAction, false, verdict.code);
+        return this.result(task, proposedAction, false, denialCode);
       }
 
+      if (!verdict.policyVersion) {
+        throw new Error("Authorized policy verdict omitted its version");
+      }
+      const authorizedAuditHash = await this.audit.recordAuthorized({
+        taskId: task._id.toString(),
+        agentName: agent.ensName,
+        policyVersion: verdict.policyVersion,
+      });
       proposedAction.policyAuthorized = true;
+      proposedAction.policyVersion = verdict.policyVersion;
       proposedAction.status = "authorized";
       await proposedAction.save();
       await this.transition(task, "policy_authorized");
@@ -212,7 +245,9 @@ export class TaskExecutionService {
         "POLICY_AUTHORIZED",
         "authorized",
         "Confidential policy approved the proposed action.",
-        {},
+        authorizedAuditHash
+          ? { auditTransactionHash: authorizedAuditHash }
+          : {},
         proposedAction,
       );
       await this.transition(task, "executing");
@@ -237,6 +272,11 @@ export class TaskExecutionService {
           totalAmountCents,
         });
       } catch {
+        await this.audit.recordBlocked({
+          taskId: task._id.toString(),
+          agentName: agent.ensName,
+          reasonCode: "CAPABILITY_UNAVAILABLE",
+        });
         proposedAction.publicDenialCode = "CAPABILITY_UNAVAILABLE";
         proposedAction.status = "failed";
         await proposedAction.save();
@@ -248,6 +288,11 @@ export class TaskExecutionService {
           "CAPABILITY_UNAVAILABLE",
         );
       }
+      const executedAuditHash = await this.audit.recordExecuted({
+        taskId: task._id.toString(),
+        agentName: agent.ensName,
+        executionReference: execution.executionReference,
+      });
       proposedAction.executionReference = execution.executionReference;
       proposedAction.transactionHash = execution.transactionHash;
       proposedAction.status = "consumed";
@@ -263,6 +308,9 @@ export class TaskExecutionService {
         {
           executionReference: execution.executionReference,
           provider: execution.provider,
+          ...(executedAuditHash
+            ? { auditTransactionHash: executedAuditHash }
+            : {}),
         },
         proposedAction,
       );
@@ -275,7 +323,7 @@ export class TaskExecutionService {
       ) {
         action.publicDenialCode = "EXECUTION_FAILED";
         action.status = "failed";
-        await action.save().catch(() => undefined);
+        await Promise.resolve(action.save()).catch(() => undefined);
       }
       return this.fail(
         task,

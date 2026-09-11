@@ -99,6 +99,7 @@ export class AuthorizationOrchestrator {
         code: "POLICY_DENIED",
         message:
           "Confidential policy verification unavailable. Action not executed.",
+        policyVersion: ens.policyVersion,
       };
     }
 
@@ -114,6 +115,7 @@ export class AuthorizationOrchestrator {
         stage: "policy",
         code: "POLICY_DENIED",
         message: publicDenialMessages.POLICY_DENIED,
+        policyVersion: verdict.policyVersion,
       };
     }
 
@@ -126,6 +128,7 @@ export class AuthorizationOrchestrator {
       authorized: true,
       stage: "policy",
       message: "Identity and confidential policy checks passed.",
+      policyVersion: verdict.policyVersion,
     };
   }
 }

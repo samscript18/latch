@@ -139,6 +139,13 @@ export const EnvironmentSchema = z
         path: ["BAZANTIC_GATEWAY_URL"],
       });
     }
+    if (environment.HACKATHON_MODE && !environment.AUDIT_CONTRACT_ADDRESS) {
+      context.addIssue({
+        code: "custom",
+        message: "HACKATHON_MODE requires AUDIT_CONTRACT_ADDRESS",
+        path: ["AUDIT_CONTRACT_ADDRESS"],
+      });
+    }
     if (environment.SEPOLIA_CHAIN_ID !== 11_155_111) {
       context.addIssue({
         code: "custom",

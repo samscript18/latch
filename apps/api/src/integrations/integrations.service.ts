@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectConnection } from "@nestjs/mongoose";
 import type { Connection } from "mongoose";
 import type { Environment } from "../config/environment.js";
+import { AuditService } from "../audit/audit.service.js";
 import {
   lastIntegrationSuccess,
   markIntegrationSuccess,
@@ -16,6 +17,7 @@ export class IntegrationsService {
     private readonly config: ConfigService<Environment, true>,
     @InjectConnection() private readonly database: Connection,
     @Inject(EnsService) private readonly ens: EnsService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async status() {
@@ -32,9 +34,7 @@ export class IntegrationsService {
     });
     const recipeId = this.config.get("BAZANTIC_RECIPE_ID", { infer: true });
     const bazanticApiKey = this.config.get("BAZANTIC_API_KEY", { infer: true });
-    const auditContract = this.config.get("AUDIT_CONTRACT_ADDRESS", {
-      infer: true,
-    });
+    const auditContract = await this.audit.status();
 
     return {
       ensv2,
@@ -82,11 +82,7 @@ export class IntegrationsService {
         provider: "mongodb",
         state: this.database.readyState === 1 ? "connected" : "disconnected",
       },
-      auditContract: {
-        network: "sepolia",
-        state: auditContract ? "configured" : "not_deployed",
-        address: auditContract ?? null,
-      },
+      auditContract,
     };
   }
 

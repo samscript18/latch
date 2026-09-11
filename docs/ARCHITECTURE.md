@@ -6,9 +6,12 @@ LATCH has one non-bypassable task path:
 validated user prompt
   -> schema-validated planner proposal
   -> provider-sourced product and price
+  -> required onchain ActionRequested audit
   -> fresh ENSv2 wallet / organization / status / role / capability check
   -> confidential policy verdict
+  -> required onchain ActionAuthorized or ActionBlocked audit
   -> exact authorized capability execution
+  -> required onchain ActionExecuted audit
   -> persistent public-safe activity
 ```
 
@@ -23,8 +26,9 @@ The planner is not an authority. MongoDB is not an identity authority. Capabilit
 - `CapabilityProvider` isolates Bazantic from local deterministic fixtures.
 - `TaskPlanner` isolates Gemini structured output through Vertex AI Express Mode from the local development planner.
 - `EnsAdminService` owns protected record writes and record-specific EAC delegation.
+- `AuditService` verifies the deployed recorder and writes sanitized lifecycle events; in hackathon mode, a missing or failed audit write stops the task.
 
-`HACKATHON_MODE=true` rejects startup unless the planner is Gemini through Vertex AI, policy provider is Chainlink, and capability provider is Bazantic.
+`HACKATHON_MODE=true` rejects startup unless the planner is Gemini through Vertex AI, policy provider is Chainlink, capability provider is Bazantic, and the deployed audit recorder is configured.
 
 ## Data boundary
 
