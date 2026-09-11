@@ -15,7 +15,7 @@ export class Task {
   @Prop({ index: true, ref: "Agent", required: true, type: "ObjectId" })
   agentId!: Types.ObjectId;
 
-  @Prop({ maxlength: 2_000, required: true, trim: true })
+  @Prop({ maxlength: 2_000, required: true, trim: true, type: String })
   prompt!: string;
 
   @Prop({
@@ -30,7 +30,7 @@ export class Task {
   @Prop({ enum: capabilities, type: String })
   requestedCapability?: Capability;
 
-  @Prop({ default: 1, min: 1, required: true })
+  @Prop({ default: 1, min: 1, required: true, type: Number })
   actionVersion!: number;
 
   createdAt!: Date;

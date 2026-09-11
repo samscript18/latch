@@ -11,13 +11,14 @@ export class Activity {
   taskId?: Types.ObjectId;
   @Prop({ ref: "ActionRequest", type: "ObjectId" })
   actionRequestId?: Types.ObjectId;
-  @Prop({ index: true, required: true }) type!: string;
+  @Prop({ index: true, required: true, type: String }) type!: string;
   @Prop({
     enum: ["started", "authorized", "blocked", "failed", "succeeded"],
     required: true,
+    type: String,
   })
   result!: string;
-  @Prop({ maxlength: 500, required: true }) message!: string;
+  @Prop({ maxlength: 500, required: true, type: String }) message!: string;
   @Prop({ default: {}, type: Object }) publicMetadata!: Record<string, unknown>;
   createdAt!: Date;
   updatedAt!: Date;

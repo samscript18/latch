@@ -3,7 +3,7 @@ import type { HydratedDocument } from "mongoose";
 
 @Schema({ collection: "organizations", timestamps: true })
 export class Organization {
-  @Prop({ required: true, trim: true })
+  @Prop({ required: true, trim: true, type: String })
   name!: string;
 
   @Prop({
@@ -11,11 +11,12 @@ export class Organization {
     lowercase: true,
     required: true,
     trim: true,
+    type: String,
     unique: true,
   })
   ensName!: string;
 
-  @Prop({ lowercase: true, required: true, trim: true })
+  @Prop({ lowercase: true, required: true, trim: true, type: String })
   ownerWallet!: string;
 
   createdAt!: Date;

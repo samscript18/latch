@@ -10,17 +10,19 @@ export class ActionRequest {
   @Prop({ index: true, ref: "Agent", required: true, type: "ObjectId" })
   agentId!: Types.ObjectId;
 
-  @Prop({ required: true }) actionType!: string;
-  @Prop({ min: 1, required: true }) quantity!: number;
-  @Prop({ required: true }) item!: string;
-  @Prop({ required: true }) vendor!: string;
-  @Prop({ min: 0, required: true }) amountCents!: number;
-  @Prop({ default: false, required: true }) ensAuthorized!: boolean;
-  @Prop({ default: false, required: true }) policyAuthorized!: boolean;
+  @Prop({ required: true, type: String }) actionType!: string;
+  @Prop({ min: 1, required: true, type: Number }) quantity!: number;
+  @Prop({ required: true, type: String }) item!: string;
+  @Prop({ required: true, type: String }) vendor!: string;
+  @Prop({ min: 0, required: true, type: Number }) amountCents!: number;
+  @Prop({ default: false, required: true, type: Boolean })
+  ensAuthorized!: boolean;
+  @Prop({ default: false, required: true, type: Boolean })
+  policyAuthorized!: boolean;
   @Prop({ enum: denialCodes, type: String }) publicDenialCode?: DenialCode;
-  @Prop() policyVersion?: string;
-  @Prop() executionReference?: string;
-  @Prop() transactionHash?: string;
+  @Prop({ type: String }) policyVersion?: string;
+  @Prop({ type: String }) executionReference?: string;
+  @Prop({ type: String }) transactionHash?: string;
   @Prop({
     enum: [
       "proposed",
@@ -40,8 +42,8 @@ export class ActionRequest {
     | "consumed"
     | "blocked"
     | "failed";
-  @Prop({ required: true }) authorizationId!: string;
-  @Prop({ default: false, required: true }) consumed!: boolean;
+  @Prop({ required: true, type: String }) authorizationId!: string;
+  @Prop({ default: false, required: true, type: Boolean }) consumed!: boolean;
 
   createdAt!: Date;
   updatedAt!: Date;
