@@ -11,17 +11,16 @@ import type {
   EnsAgentIdentity,
 } from "@latch/shared";
 import {
-  concat,
   encodeFunctionData,
   getAddress,
   keccak256,
+  stringToHex,
   toHex,
-  zeroHash,
   type Address,
   type Hash,
   type Hex,
 } from "viem";
-import { namehash, normalize, packetToBytes } from "viem/ens";
+import { normalize, packetToBytes } from "viem/ens";
 import {
   ROLE_SET_ADDR,
   ROLE_SET_TEXT,
@@ -70,8 +69,8 @@ export class EnsAdminService {
   ): Promise<EnsWriteResult> {
     const { name, resolver } =
       await this.requirePermissionedResolver(unsafeName);
-    await this.requireAdminRoles(name, resolver, ROLE_SET_ADDR | ROLE_SET_TEXT);
-    const node = namehash(name);
+    await this.requireAdminRoles(resolver, ROLE_SET_ADDR | ROLE_SET_TEXT);
+    const encodedName = toHex(packetToBytes(name));
     const values: ReadonlyArray<readonly [string, string]> = [
       [latchTextKeys.role, records.role],
       [latchTextKeys.status, records.status],
@@ -82,10 +81,12 @@ export class EnsAdminService {
     const transactionHash = await this.transactions.multicall(resolver, [
       encodeFunctionData({
         abi: permissionedResolverAbi,
-        functionName: "setAddr",
-        args: [node, getAddress(records.agentWallet)],
+        functionName: "setAddress",
+        args: [encodedName, 60n, getAddress(records.agentWallet)],
       }),
-      ...values.map(([key, value]) => this.encodeSetText(node, key, value)),
+      ...values.map(([key, value]) =>
+        this.encodeSetText(encodedName, key, value),
+      ),
     ]);
     const identity = await this.ens.resolveAgent(name);
     if (identity.wallet?.toLowerCase() !== records.agentWallet.toLowerCase()) {
@@ -116,23 +117,22 @@ export class EnsAdminService {
   ): Promise<EnsWriteResult> {
     const { name, resolver } =
       await this.requirePermissionedResolver(unsafeName);
-    await this.requireAdminRoles(
-      name,
-      resolver,
-      ROLE_SET_TEXT | ROLE_SET_TEXT_ADMIN,
-    );
-    const node = namehash(name);
+    await this.requireAdminRoles(resolver, ROLE_SET_TEXT | ROLE_SET_TEXT_ADMIN);
+    const encodedName = toHex(packetToBytes(name));
     const calls = [
-      this.encodeSetText(node, latchTextKeys.status, "revoked"),
-      this.encodeSetText(node, "latch.revokedAt", new Date().toISOString()),
+      this.encodeSetText(encodedName, latchTextKeys.status, "revoked"),
+      this.encodeSetText(
+        encodedName,
+        "latch.revokedAt",
+        new Date().toISOString(),
+      ),
       encodeFunctionData({
         abi: permissionedResolverAbi,
-        functionName: "authorizeTextRoles",
+        functionName: "revokeRoles",
         args: [
-          toHex(packetToBytes(name)),
-          SAFE_AGENT_TEXT_KEY,
+          this.textResource(SAFE_AGENT_TEXT_KEY),
+          ROLE_SET_TEXT,
           getAddress(agentWallet),
-          false,
         ],
       }),
     ];
@@ -157,14 +157,25 @@ export class EnsAdminService {
   ): Promise<EnsWriteResult> {
     const { name, resolver } =
       await this.requirePermissionedResolver(unsafeName);
-    await this.requireAdminRoles(name, resolver, ROLE_SET_TEXT_ADMIN);
-    const transactionHash = await this.transactions.authorizeText(
-      resolver,
-      toHex(packetToBytes(name)),
-      SAFE_AGENT_TEXT_KEY,
-      getAddress(agentWallet),
-      grant,
-    );
+    await this.requireAdminRoles(resolver, ROLE_SET_TEXT_ADMIN);
+    const encodedName = toHex(packetToBytes(name));
+    const account = getAddress(agentWallet);
+    const transactionHash = grant
+      ? await this.transactions.grantSetterRoles(
+          resolver,
+          encodeFunctionData({
+            abi: permissionedResolverAbi,
+            functionName: "setText",
+            args: [encodedName, SAFE_AGENT_TEXT_KEY, ""],
+          }),
+          account,
+        )
+      : await this.transactions.revokeRoles(
+          resolver,
+          this.textResource(SAFE_AGENT_TEXT_KEY),
+          ROLE_SET_TEXT,
+          account,
+        );
     return { transactionHash, identity: await this.ens.resolveAgent(name) };
   }
 
@@ -177,15 +188,13 @@ export class EnsAdminService {
   }
 
   private async requireAdminRoles(
-    name: string,
     resolver: Address,
     roles: bigint,
   ): Promise<void> {
     const admin = this.transactions.getAdminAddress();
-    const resource = BigInt(keccak256(concat([namehash(name), zeroHash])));
     const authorized = await this.transactions.hasRoles(
       resolver,
-      resource,
+      0n,
       roles,
       admin,
     );
@@ -196,13 +205,17 @@ export class EnsAdminService {
     }
   }
 
-  private encodeSetText(node: Hex, key: string, value: string): Hex {
+  private encodeSetText(name: Hex, key: string, value: string): Hex {
     if (!protectedKeys.has(key))
       throw new BadRequestException("Unsupported protected ENS record");
     return encodeFunctionData({
       abi: permissionedResolverAbi,
       functionName: "setText",
-      args: [node, key, value],
+      args: [name, key, value],
     });
+  }
+
+  private textResource(key: string): bigint {
+    return BigInt(keccak256(stringToHex(key)));
   }
 }

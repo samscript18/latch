@@ -27,7 +27,7 @@
     "contracts:deploy:sepolia": "bash -c 'set -a; source .env; set +a; cd packages/contracts && forge script script/DeployLatchAudit.s.sol:DeployLatchAudit --rpc-url \"$SEPOLIA_RPC_URL\" --broadcast'",
     "ens:create-agents": "tsx --env-file-if-exists=.env scripts/create-ens-agents.ts",
     "ens:setup": "tsx --env-file-if-exists=.env scripts/setup-ens-infrastructure.ts",
-    "ens:prepare": "tsx --env-file-if-exists=.env scripts/prepare-ens-agents.ts",
+    "ens:prepare": "tsx --tsconfig scripts/tsconfig.json --env-file-if-exists=.env scripts/prepare-ens-agents.ts",
     "ens:register": "tsx --env-file-if-exists=.env scripts/register-ens-name.ts",
     "seed:demo": "tsx --env-file-if-exists=.env scripts/seed-demo.ts",
     "verify:ens": "tsx --env-file-if-exists=.env scripts/verify-ens.ts",

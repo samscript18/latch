@@ -256,7 +256,14 @@ re-grant the safe profile permission.
 
 The organization retains control of `latch.organization`, `latch.role`, `latch.status`, `latch.capabilities`, and `latch.policyVersion`. The implemented write path can delegate only the harmless `latch.profile` key through the exact current Permissioned Resolver EAC interface. No write ABI is guessed in the read path.
 
-The implemented admin path uses the current `authorizeTextRoles` interface and delegates only `latch.profile`. Generic resolver role mutation is deliberately not used because the current Permissioned Resolver disables it. Revocation atomically writes `latch.status=revoked`, records `latch.revokedAt`, removes the profile permission, waits for confirmation, and verifies the status through a fresh ENS read.
+The implemented admin path uses the hackathon resolver's current
+`grantSetterRoles` interface and delegates only `latch.profile`. Each agent has
+an isolated resolver because setter permissions are argument-scoped across a
+resolver rather than name-scoped. Generic role grants are deliberately not used
+because the Permissioned Resolver disables them. Revocation atomically writes
+`latch.status=revoked`, records `latch.revokedAt`, removes the profile
+permission, waits for confirmation, and verifies the status through a fresh
+ENS read.
 
 ## Preparing existing ENSv2 child identities
 
@@ -272,7 +279,10 @@ Execute the verified writes explicitly:
 npm run ens:prepare -- --execute
 ```
 
-The script aborts if a child has no active resolver or if the signer lacks the necessary Permissioned Resolver roles. Child creation remains a separate official ENSv2 CLI step because the preview CLI is not production-ready and the repository will not guess registry setup or resolver deployment transactions.
+The script aborts if a child has no active resolver or if the signer lacks the
+necessary Permissioned Resolver roles. Parent infrastructure and child creation
+are handled separately by `ens:setup` and `ens:create-agents`, with read-only
+previews and receipt verification before record preparation.
 
 ## Local verification
 

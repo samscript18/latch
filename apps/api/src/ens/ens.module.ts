@@ -3,10 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { createPublicClient, http } from "viem";
 import type { Environment } from "../config/environment.js";
 import { EnsAuthorizationService } from "./ens-authorization.service.js";
-import {
-  createEnsV2HackathonChain,
-  ENS_V2_CLIENT,
-} from "./ens.constants.js";
+import { createEnsV2HackathonChain, ENS_V2_CLIENT } from "./ens.constants.js";
 import { EnsController } from "./ens.controller.js";
 import { EnsRecordParser } from "./ens-record.parser.js";
 import { EnsService } from "./ens.service.js";

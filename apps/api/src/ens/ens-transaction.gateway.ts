@@ -69,12 +69,10 @@ export class EnsTransactionGateway {
     return result;
   }
 
-  async authorizeText(
+  async grantSetterRoles(
     resolver: Address,
-    encodedName: Hex,
-    key: string,
+    setter: Hex,
     account: Address,
-    grant: boolean,
   ): Promise<Hash> {
     const signer = this.getAccount();
     const client = this.publicClient();
@@ -82,8 +80,28 @@ export class EnsTransactionGateway {
       account: signer,
       address: resolver,
       abi: permissionedResolverAbi,
-      functionName: "authorizeTextRoles",
-      args: [encodedName, key, account, grant],
+      functionName: "grantSetterRoles",
+      args: [setter, account],
+    });
+    const hash = await this.walletClient().writeContract(simulation.request);
+    await client.waitForTransactionReceipt({ hash });
+    return hash;
+  }
+
+  async revokeRoles(
+    resolver: Address,
+    resource: bigint,
+    roleBitmap: bigint,
+    account: Address,
+  ): Promise<Hash> {
+    const signer = this.getAccount();
+    const client = this.publicClient();
+    const simulation = await client.simulateContract({
+      account: signer,
+      address: resolver,
+      abi: permissionedResolverAbi,
+      functionName: "revokeRoles",
+      args: [resource, roleBitmap, account],
     });
     const hash = await this.walletClient().writeContract(simulation.request);
     await client.waitForTransactionReceipt({ hash });
@@ -119,7 +137,10 @@ export class EnsTransactionGateway {
       throw new ServiceUnavailableException(
         "SEPOLIA_RPC_URL is not configured",
       );
-    return createPublicClient({ chain: this.chain, transport: http(this.rpcUrl) });
+    return createPublicClient({
+      chain: this.chain,
+      transport: http(this.rpcUrl),
+    });
   }
 
   private walletClient() {

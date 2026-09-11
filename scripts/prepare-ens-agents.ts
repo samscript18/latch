@@ -19,7 +19,13 @@ function requiredAddress(value: string | undefined, variable: string): Address {
   return getAddress(required(value, variable));
 }
 
-const environment = validateEnvironment(process.env);
+// Infrastructure preparation must remain runnable while external hackathon
+// providers are still being configured. The API retains its strict startup
+// guard; this script validates the same chain/settings without that provider guard.
+const environment = validateEnvironment({
+  ...process.env,
+  HACKATHON_MODE: "false",
+});
 const config = new ConfigService(environment) as ConfigService<
   Environment,
   true

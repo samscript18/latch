@@ -1,14 +1,19 @@
 import {
   ENSV2_HACKATHON_ETH_REGISTRY_ADDRESS,
+  ENSV2_HACKATHON_PERMISSIONED_RESOLVER_IMPL_ADDRESS,
   ENSV2_HACKATHON_UNIVERSAL_RESOLVER_ADDRESS,
+  ENSV2_HACKATHON_VERIFIABLE_FACTORY_ADDRESS,
 } from "@latch/shared";
 import {
   createPublicClient,
   createWalletClient,
+  encodeAbiParameters,
+  encodeFunctionData,
   getAddress,
   http,
   keccak256,
   parseAbi,
+  parseEventLogs,
   stringToHex,
   type Address,
   type Hash,
@@ -33,7 +38,15 @@ const userRegistryAbi = parseAbi([
   "function getStatus(uint256 anyId) view returns (uint8)",
   "function getOwner(uint256 anyId) view returns (address)",
   "function getResolver(string label) view returns (address)",
+  "function setResolver(uint256 anyId, address resolver)",
   "function register(string label, address owner, address registry, address resolver, uint256 roleBitmap, uint64 expiry) returns (uint256 tokenId)",
+]);
+const factoryAbi = parseAbi([
+  "function deployProxy(address implementation, uint256 salt, bytes data) returns (address proxy)",
+  "event ProxyDeployed(address indexed sender, address indexed proxyAddress, uint256 salt, address implementation)",
+]);
+const resolverInitAbi = parseAbi([
+  "function initialize((address account, uint256 roleBitmap)[] grants, bytes[] calls)",
 ]);
 
 function required(value: string | undefined, variable: string): string {
@@ -99,6 +112,62 @@ const walletClient = createWalletClient({
 const execute = process.argv.includes("--execute");
 const parentId = BigInt(keccak256(stringToHex(parentLabel)));
 
+async function deployChildResolver(version: bigint): Promise<{
+  address: Address;
+  hash: Hash;
+}> {
+  const salt = BigInt(
+    keccak256(
+      encodeAbiParameters(
+        [{ type: "bytes32" }, { type: "address" }, { type: "uint256" }],
+        [keccak256(stringToHex("OwnedResolver")), account.address, version],
+      ),
+    ),
+  );
+  const initData = encodeFunctionData({
+    abi: resolverInitAbi,
+    functionName: "initialize",
+    args: [[{ account: account.address, roleBitmap: ALL_ROLES }], []],
+  });
+  const simulation = await publicClient.simulateContract({
+    account,
+    address: ENSV2_HACKATHON_VERIFIABLE_FACTORY_ADDRESS,
+    abi: factoryAbi,
+    functionName: "deployProxy",
+    args: [ENSV2_HACKATHON_PERMISSIONED_RESOLVER_IMPL_ADDRESS, salt, initData],
+  });
+  const hash = await walletClient.writeContract(simulation.request);
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success")
+    throw new Error(`Transaction ${hash} failed`);
+  const [event] = parseEventLogs({
+    abi: factoryAbi,
+    eventName: "ProxyDeployed",
+    logs: receipt.logs,
+  });
+  if (!event) throw new Error(`ProxyDeployed event missing from ${hash}`);
+  return { address: getAddress(event.args.proxyAddress), hash };
+}
+
+async function setChildResolver(
+  registry: Address,
+  labelId: bigint,
+  resolverAddress: Address,
+): Promise<Hash> {
+  const simulation = await publicClient.simulateContract({
+    account,
+    address: registry,
+    abi: userRegistryAbi,
+    functionName: "setResolver",
+    args: [labelId, resolverAddress],
+  });
+  const hash = await walletClient.writeContract(simulation.request);
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success")
+    throw new Error(`Transaction ${hash} failed`);
+  return hash;
+}
+
 const [resolver, subregistry, parentExpiry] = await Promise.all([
   publicClient.readContract({
     address: ENSV2_HACKATHON_ETH_REGISTRY_ADDRESS,
@@ -129,7 +198,7 @@ console.table({ parentName, admin: account.address, resolver, subregistry });
 
 const transactions: Record<string, Hash> = {};
 let missingNames = 0;
-for (const label of childLabels) {
+for (const [index, label] of childLabels.entries()) {
   const labelId = BigInt(keccak256(stringToHex(label)));
   let status = Number(
     await publicClient.readContract({
@@ -180,12 +249,28 @@ for (const label of childLabels) {
           args: [labelId],
         })
       : ZERO_ADDRESS;
-  const childResolver = await publicClient.readContract({
+  let childResolver = await publicClient.readContract({
     address: subregistry,
     abi: userRegistryAbi,
     functionName: "getResolver",
     args: [label],
   });
+
+  if (execute && status === REGISTERED && childResolver === resolver) {
+    const deployed = await deployChildResolver(BigInt(index + 1));
+    transactions[`${label}Resolver`] = deployed.hash;
+    transactions[`${label}AttachResolver`] = await setChildResolver(
+      subregistry,
+      labelId,
+      deployed.address,
+    );
+    childResolver = await publicClient.readContract({
+      address: subregistry,
+      abi: userRegistryAbi,
+      functionName: "getResolver",
+      args: [label],
+    });
+  }
 
   console.table({
     name: `${label}.${parentName}`,
@@ -198,9 +283,16 @@ for (const label of childLabels) {
     owner,
     resolver: childResolver,
     transaction: transactions[label] ?? "none",
+    resolverDeployment: transactions[`${label}Resolver`] ?? "none",
+    resolverAttachment: transactions[`${label}AttachResolver`] ?? "none",
   });
 
-  if (execute && (status !== REGISTERED || childResolver !== resolver)) {
+  if (
+    execute &&
+    (status !== REGISTERED ||
+      childResolver === ZERO_ADDRESS ||
+      childResolver === resolver)
+  ) {
     throw new Error(
       `${label}.${parentName} failed read-after-write verification`,
     );

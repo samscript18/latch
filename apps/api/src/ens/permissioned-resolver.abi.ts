@@ -1,11 +1,12 @@
 export const permissionedResolverAbi = [
   {
     type: "function",
-    name: "setAddr",
+    name: "setAddress",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "node", type: "bytes32" },
-      { name: "addr", type: "address" },
+      { name: "name", type: "bytes" },
+      { name: "coinType", type: "uint256" },
+      { name: "addressBytes", type: "bytes" },
     ],
     outputs: [],
   },
@@ -14,7 +15,7 @@ export const permissionedResolverAbi = [
     name: "setText",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "node", type: "bytes32" },
+      { name: "name", type: "bytes" },
       { name: "key", type: "string" },
       { name: "value", type: "string" },
     ],
@@ -22,13 +23,22 @@ export const permissionedResolverAbi = [
   },
   {
     type: "function",
-    name: "authorizeTextRoles",
+    name: "grantSetterRoles",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "toName", type: "bytes" },
-      { name: "key", type: "string" },
+      { name: "setter", type: "bytes" },
       { name: "account", type: "address" },
-      { name: "grant", type: "bool" },
+    ],
+    outputs: [{ name: "success", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "revokeRoles",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "resource", type: "uint256" },
+      { name: "roleBitmap", type: "uint256" },
+      { name: "account", type: "address" },
     ],
     outputs: [{ name: "success", type: "bool" }],
   },
