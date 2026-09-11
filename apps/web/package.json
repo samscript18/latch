@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@latch/shared": "*",
+    "@next/env": "^16.3.4",
     "@tanstack/react-query": "^5.102.8",
     "@wagmi/connectors": "^8.2.0",
     "next": "16.3.4",

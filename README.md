@@ -63,7 +63,7 @@ The demo workspace is at `/demo`, its sanitized audit feed at `/demo/activity`, 
 
 ## Environment variables
 
-Copy `.env.example` and fill only the integrations you intend to run. Browser-exposed values are limited to `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SEPOLIA_RPC_URL`. MongoDB, signer material, the Vertex AI key, CRE secret reference, Bazantic API key, and audit recorder address remain server-only. The Gemini planner is called through Vertex AI Express Mode, not the Gemini Developer API. `HACKATHON_MODE=true` rejects startup unless Gemini through Vertex AI, Chainlink, and Bazantic providers are selected, a deployed audit recorder is configured, and the required live endpoint/credential configuration is complete; it never silently falls back to local providers.
+Copy `.env.example` to the repository root as `.env.local` (preferred) or `.env`. Both the API and web workspace load root configuration, with `.env.local` taking precedence. Browser-exposed values are limited to `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SEPOLIA_RPC_URL`. MongoDB, signer material, the Vertex AI key, CRE secret reference, Bazantic API key, and audit recorder address remain server-only. The Gemini planner is called through Vertex AI Express Mode, not the Gemini Developer API. `HACKATHON_MODE=true` rejects startup unless Gemini through Vertex AI, Chainlink, and Bazantic providers are selected, a deployed audit recorder is configured, and the required live endpoint/credential configuration is complete; it never silently falls back to local providers.
 
 ## Running the apps
 
