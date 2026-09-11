@@ -1,0 +1,164 @@
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import type { Model } from "mongoose";
+import { getAddress, type Address } from "viem";
+import { normalize } from "viem/ens";
+import {
+  Activity,
+  type ActivityDocument,
+} from "../database/schemas/activity.schema.js";
+import { Agent, type AgentDocument } from "../database/schemas/agent.schema.js";
+import {
+  Organization,
+  type OrganizationDocument,
+} from "../database/schemas/organization.schema.js";
+import { EnsAdminService } from "../ens/ens-admin.service.js";
+import { EnsService } from "../ens/ens.service.js";
+import type { EnsAgentIdentity } from "@latch/shared";
+
+@Injectable()
+export class AgentsService {
+  constructor(
+    @InjectModel(Agent.name) private readonly agents: Model<AgentDocument>,
+    @InjectModel(Organization.name)
+    private readonly organizations: Model<OrganizationDocument>,
+    @InjectModel(Activity.name)
+    private readonly activities: Model<ActivityDocument>,
+    @Inject(EnsService) private readonly ens: EnsService,
+    @Inject(EnsAdminService) private readonly ensAdmin: EnsAdminService,
+  ) {}
+
+  async list() {
+    const agents = await this.agents.find().sort({ displayName: 1 }).exec();
+    return Promise.all(agents.map((agent) => this.toFreshView(agent)));
+  }
+
+  async findByEnsName(unsafeName: string) {
+    const name = this.normalizeName(unsafeName);
+    const agent = await this.agents.findOne({ ensName: name }).exec();
+    if (!agent) throw new NotFoundException("Agent not found");
+    return this.toFreshView(agent);
+  }
+
+  async revoke(unsafeName: string, actingWallet: Address) {
+    const name = this.normalizeName(unsafeName);
+    const agent = await this.agents.findOne({ ensName: name }).exec();
+    if (!agent) throw new NotFoundException("Agent not found");
+    const organization = await this.organizations
+      .findById(agent.organizationId)
+      .exec();
+    if (!organization)
+      throw new NotFoundException("Agent organization not found");
+    if (getAddress(organization.ownerWallet) !== getAddress(actingWallet)) {
+      throw new UnauthorizedException("Organization owner wallet required");
+    }
+
+    const result = await this.ensAdmin.revokeAgent(
+      name,
+      getAddress(agent.wallet),
+    );
+    await this.saveSnapshot(agent, result.identity);
+    await this.activities.create({
+      organizationId: organization._id,
+      agentId: agent._id,
+      type: "AGENT_REVOKED",
+      result: "succeeded",
+      message: "Agent authority was revoked through ENS.",
+      publicMetadata: { transactionHash: result.transactionHash },
+    });
+    return {
+      transactionHash: result.transactionHash,
+      agent: this.serialize(agent, result.identity, true),
+    };
+  }
+
+  private async toFreshView(agent: AgentDocument) {
+    const recentActivity = await this.recentActivity(agent);
+    try {
+      const identity = await this.ens.resolveAgent(agent.ensName);
+      await this.saveSnapshot(agent, identity);
+      return this.serialize(agent, identity, true, recentActivity);
+    } catch {
+      return this.serialize(agent, null, false, recentActivity);
+    }
+  }
+
+  private async recentActivity(agent: AgentDocument) {
+    const rows = await this.activities
+      .find({ agentId: agent._id })
+      .sort({ createdAt: -1 })
+      .limit(8)
+      .lean()
+      .exec();
+    return rows.map((row) => ({
+      id: row._id.toString(),
+      type: row.type,
+      result: row.result,
+      message: row.message,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  }
+
+  private async saveSnapshot(
+    agent: AgentDocument,
+    identity: EnsAgentIdentity,
+  ): Promise<void> {
+    agent.lastEnsSnapshot = {
+      capabilities: identity.capabilities,
+      organization: identity.organization ?? undefined,
+      policyVersion: identity.policyVersion ?? undefined,
+      resolver: identity.resolver ?? undefined,
+      role: identity.role ?? undefined,
+      status: identity.status ?? undefined,
+    };
+    agent.lastEnsBlock = identity.checkedAtBlock?.toString();
+    agent.lastEnsCheckedAt = new Date();
+    await agent.save();
+  }
+
+  private serialize(
+    agent: AgentDocument,
+    identity: EnsAgentIdentity | null,
+    ensVerified: boolean,
+    recentActivity: Array<{
+      id: string;
+      type: string;
+      result: string;
+      message: string;
+      createdAt: string;
+    }> = [],
+  ) {
+    return {
+      id: agent._id.toString(),
+      displayName: agent.displayName,
+      ensName: agent.ensName,
+      expectedWallet: agent.wallet,
+      organizationId: agent.organizationId.toString(),
+      ensVerified,
+      identity: identity
+        ? {
+            ...identity,
+            checkedAtBlock: identity.checkedAtBlock?.toString(),
+          }
+        : null,
+      lastEnsCheckedAt: ensVerified
+        ? agent.lastEnsCheckedAt?.toISOString()
+        : null,
+      recentActivity,
+    };
+  }
+
+  private normalizeName(unsafeName: string): string {
+    try {
+      return normalize(decodeURIComponent(unsafeName).trim());
+    } catch {
+      throw new ServiceUnavailableException("Invalid ENS name");
+    }
+  }
+}

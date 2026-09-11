@@ -1,0 +1,20 @@
+{
+  "name": "@latch/cre-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "simulate": "PATH=\"$HOME/.cre/bin:$PATH\" cre workflow simulate . --target staging-settings",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "1.20.1",
+    "@latch/shared": "*",
+    "zod": "4.3.3"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

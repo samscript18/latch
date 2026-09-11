@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@latch/shared": ["../shared/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
