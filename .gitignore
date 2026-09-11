@@ -5,6 +5,7 @@ node_modules/
 dist/
 .next/
 coverage/
+*.tsbuildinfo
 packages/contracts/cache/
 packages/contracts/out/
 packages/contracts/broadcast/
