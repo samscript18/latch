@@ -221,6 +221,23 @@ or execution must revert. Then verify that the admin can still update the
 protected records. Save both outcomes under `evidence/ens/` without storing
 private keys or signed raw transactions.
 
+The repository automates the non-destructive proof for both configured agents:
+
+```bash
+# Simulate the allowed and denied calls without writing
+npm run ens:verify-permissions
+
+# Broadcast only the harmless profile writes; protected writes remain simulation-only
+npm run ens:verify-permissions -- --execute
+```
+
+If either agent has no Sepolia ETH for gas, the idempotent project-wallet
+funding helper tops it up to `0.001` testnet ETH:
+
+```bash
+npm run ens:fund-agents
+```
+
 ### 8. Demonstrate revocation last
 
 Run the successful and policy-denied demos before revocation. Revocation is a
