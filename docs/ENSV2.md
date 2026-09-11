@@ -90,6 +90,22 @@ by the registrar. Configure both deliberately after registration and before
 creating the two agent identities. Do not remove
 `evidence/ens/registration.secret.json` between commit and register.
 
+Attach the organization-controlled infrastructure using the official
+Verifiable Factory flow:
+
+```bash
+# Inspect the parent without writing
+npm run ens:setup
+
+# Deploy one Permissioned Resolver and one User Registry proxy, then attach them
+npm run ens:setup -- --execute
+```
+
+The script derives the official version-zero salts, grants the admin all root
+roles and their admin counterparts, waits for every receipt, and verifies both
+parent pointers after writing. Re-running it is read-only once both pointers
+are nonzero.
+
 ### 3. Create organization-controlled agent identities
 
 Create these children in the parent's subregistry:
