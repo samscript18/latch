@@ -130,6 +130,18 @@ For each child:
 5. Confirm the child appears in the [hackathon ENS Explorer](https://hackathon-deployment-portal-app.ens-cf.workers.dev/)
    and has a nonzero resolver.
 
+The same organization-controlled setup can be performed directly and
+idempotently from the repository:
+
+```bash
+npm run ens:create-agents
+npm run ens:create-agents -- --execute
+```
+
+The script registers only the two configured direct children, keeps ownership
+with the organization admin, reuses the admin's verified Permissioned Resolver,
+and caps child expiry at the parent expiry.
+
 Use this mapping:
 
 | Child                  | Address record                  | Protected role | Protected capability   |
