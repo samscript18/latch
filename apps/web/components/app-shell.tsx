@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { LatchMark } from "./latch-logo";
 import { OnboardingModal } from "./onboarding-modal";
+import { WalletButton } from "./wallet-button";
 import { useWalletSession } from "./wallet-session";
 
 const navigation = [
@@ -15,8 +16,6 @@ const navigation = [
 	{ href: "/app/activity", label: "Activity Stream", icon: "≋" },
 	{ href: "/app/settings", label: "Settings", icon: "⚙" },
 ];
-
-const shortAddress = (value?: string) => (value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "Connect admin wallet");
 
 export function AppShell({ children }: { children: ReactNode }) {
 	const pathname = usePathname();
@@ -94,19 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 						</div>
 					</div>
 
-					{session.connected && session.token ? (
-						<div className="flex items-center gap-3">
-							<button className="wallet-control group" onClick={session.disconnectWallet} title="Click to disconnect">
-								<span className="wallet-avatar" />
-								<span className="text-foreground/90">{shortAddress(session.address)}</span>
-								<span className="text-muted group-hover:text-red-400 text-[10px] transition-colors">Disconnect</span>
-							</button>
-						</div>
-					) : (
-						<button className="brand-button text-xs py-1.5 px-4" disabled={session.authenticating} onClick={session.connectAndAuthenticate}>
-							{session.authenticating ? "Checking wallet…" : session.connected ? "Sign in with wallet" : "Connect admin wallet"}
-						</button>
-					)}
+					<WalletButton />
 				</header>
 
 				{session.error && <div className="notice error mx-8 mt-4">{session.error}</div>}
@@ -124,11 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 						</span>
 						<h1 className="mt-3">Connect the wallet that controls your organization namespace.</h1>
 						<p className="mt-4">LATCH uses a cryptographic challenge signature for admin actions. Your private key never leaves your wallet, and no gas is required to sign in.</p>
-						<div className="mt-8">
-							<button className="brand-button" disabled={session.authenticating} onClick={session.connectAndAuthenticate}>
-								{session.authenticating ? "Waiting for signature…" : "Connect and sign in"}
-							</button>
-						</div>
+						<div className="mt-8"><WalletButton /></div>
 					</section>
 				) : (
 					children

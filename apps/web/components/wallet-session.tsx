@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useAccount, useConnect, useDisconnect, useSignMessage, useSwitchChain } from "wagmi";
+import { useAccount, useDisconnect, useSignMessage, useSwitchChain } from "wagmi";
 import { api, ApiError } from "../lib/api";
 import { hackathonSepolia } from "../lib/wagmi";
 
@@ -69,7 +69,7 @@ interface WalletSessionValue {
 	profile: MeResponse | undefined;
 	profileLoading: boolean;
 	error: string | null;
-	connectAndAuthenticate(): Promise<void>;
+	authenticateConnectedWallet(): Promise<void>;
 	disconnectWallet(): void;
 	refreshProfile(): Promise<void>;
 }
@@ -79,7 +79,6 @@ const storageKey = "latch.wallet.session";
 
 export function WalletSessionProvider({ children }: { children: ReactNode }) {
 	const account = useAccount();
-	const { connectors, connectAsync } = useConnect();
 	const { disconnect } = useDisconnect();
 	const { signMessageAsync } = useSignMessage();
 	const { switchChainAsync } = useSwitchChain();
@@ -90,11 +89,17 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		const saved = window.localStorage.getItem(storageKey);
-		if (!saved || !account.address) return;
+		if (!account.address) return;
+		if (!saved) {
+			setToken(null);
+			return;
+		}
 		try {
 			const parsed = JSON.parse(saved) as { address: string; token: string };
 			if (parsed.address.toLowerCase() === account.address.toLowerCase()) {
 				setToken(parsed.token);
+			} else {
+				setToken(null);
 			}
 		} catch {
 			window.localStorage.removeItem(storageKey);
@@ -132,20 +137,12 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
 		[signMessageAsync],
 	);
 
-	const connectAndAuthenticate = useCallback(async () => {
+	const authenticateConnectedWallet = useCallback(async () => {
 		setAuthenticating(true);
 		setError(null);
 		try {
-			let address = account.address;
-			if (!address) {
-				const connector = connectors.find((item) => item.type === "injected") ?? connectors[0];
-				if (!connector) throw new Error("No browser wallet was detected");
-				const result = await connectAsync({
-					connector,
-					chainId: hackathonSepolia.id,
-				});
-				address = result.accounts[0];
-			}
+			const address = account.address;
+			if (!address) throw new Error("Connect a wallet first");
 			if (account.chainId !== hackathonSepolia.id) {
 				await switchChainAsync({ chainId: hackathonSepolia.id });
 			}
@@ -155,7 +152,7 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
 		} finally {
 			setAuthenticating(false);
 		}
-	}, [account.address, account.chainId, authenticate, connectAsync, connectors, switchChainAsync]);
+	}, [account.address, account.chainId, authenticate, switchChainAsync]);
 
 	const disconnectWallet = useCallback(() => {
 		setToken(null);
@@ -174,13 +171,13 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
 			profile: me.data,
 			profileLoading: me.isLoading,
 			error: error ?? (me.error instanceof Error ? me.error.message : null),
-			connectAndAuthenticate,
+			authenticateConnectedWallet,
 			disconnectWallet,
 			refreshProfile: async () => {
 				await me.refetch();
 			},
 		}),
-		[account.address, account.isConnected, authenticating, connectAndAuthenticate, disconnectWallet, error, me, token],
+		[account.address, account.isConnected, authenticateConnectedWallet, authenticating, disconnectWallet, error, me, token],
 	);
 
 	return <WalletSessionContext.Provider value={value}>{children}</WalletSessionContext.Provider>;
