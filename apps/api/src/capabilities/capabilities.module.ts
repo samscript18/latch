@@ -4,11 +4,13 @@ import type { Environment } from "../config/environment.js";
 import { CAPABILITY_PROVIDER } from "./capability-provider.interface.js";
 import { LocalDemoCapabilityProvider } from "./local-demo-capability.provider.js";
 import { RecipeOnlyCapabilityProvider } from "./recipe-only-capability.provider.js";
+import { TavilyResearchProvider } from "./tavily-research.provider.js";
 
 @Module({
   providers: [
     LocalDemoCapabilityProvider,
     RecipeOnlyCapabilityProvider,
+    TavilyResearchProvider,
     {
       provide: CAPABILITY_PROVIDER,
       inject: [
@@ -26,6 +28,6 @@ import { RecipeOnlyCapabilityProvider } from "./recipe-only-capability.provider.
       },
     },
   ],
-  exports: [CAPABILITY_PROVIDER],
+  exports: [CAPABILITY_PROVIDER, TavilyResearchProvider],
 })
 export class CapabilitiesModule {}

@@ -72,6 +72,16 @@ export class IntegrationsService {
         recipeId: recipeId ?? null,
         lastSuccessfulInvocation: lastIntegrationSuccess("bazantic"),
       },
+      research: {
+        provider: "tavily",
+        state: this.config.get("TAVILY_API_KEY", { infer: true })
+          ? "configured"
+          : "missing_configuration",
+        validForHackathon: Boolean(
+          this.config.get("TAVILY_API_KEY", { infer: true }),
+        ),
+        lastSuccessfulInvocation: lastIntegrationSuccess("tavily"),
+      },
       planner: {
         provider: plannerProvider,
         state:

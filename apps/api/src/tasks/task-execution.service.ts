@@ -10,6 +10,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { publicDenialMessages, type TaskStatus } from "@latch/shared";
 import type { Model } from "mongoose";
 import type { Address } from "viem";
+import { createHash } from "node:crypto";
 import { AuditService } from "../audit/audit.service.js";
 import { AuthorizationOrchestrator } from "../authorization/authorization.orchestrator.js";
 import { capabilityRegistry } from "../capabilities/capability-registry.js";
@@ -18,6 +19,7 @@ import {
   type CapabilityProvider,
   type ProductCandidate,
 } from "../capabilities/capability-provider.interface.js";
+import { TavilyResearchProvider } from "../capabilities/tavily-research.provider.js";
 import {
   ActionRequest,
   type ActionRequestDocument,
@@ -28,6 +30,10 @@ import {
 } from "../database/schemas/activity.schema.js";
 import { Agent, type AgentDocument } from "../database/schemas/agent.schema.js";
 import { Task, type TaskDocument } from "../database/schemas/task.schema.js";
+import {
+  ResearchProposal,
+  type ResearchProposalDocument,
+} from "../database/schemas/research-proposal.schema.js";
 import {
   Organization,
   type OrganizationDocument,
@@ -58,11 +64,15 @@ export class TaskExecutionService {
     @InjectModel(Agent.name) private readonly agents: Model<AgentDocument>,
     @InjectModel(ActionRequest.name)
     private readonly actions: Model<ActionRequestDocument>,
+    @InjectModel(ResearchProposal.name)
+    private readonly researchProposals: Model<ResearchProposalDocument>,
     @InjectModel(Activity.name)
     private readonly activities: Model<ActivityDocument>,
     @Inject(TASK_PLANNER) private readonly planner: TaskPlanner,
     @Inject(CAPABILITY_PROVIDER)
     private readonly capability: CapabilityProvider,
+    @Inject(TavilyResearchProvider)
+    private readonly tavily: TavilyResearchProvider,
     @Inject(AuthorizationOrchestrator)
     private readonly authorization: AuthorizationOrchestrator,
     @Inject(AuditService)
@@ -106,6 +116,11 @@ export class TaskExecutionService {
     }
     const agent = await this.agents.findById(task.agentId).exec();
     if (!agent) return this.fail(task, null, "Task agent no longer exists");
+    const organization = await this.requireOrganizations()
+      .findById(task.organizationId)
+      .lean()
+      .exec();
+    if (!organization) return this.fail(task, agent, "Task organization no longer exists");
     let action: ActionRequestDocument | null = null;
 
     try {
@@ -132,6 +147,10 @@ export class TaskExecutionService {
           { code: "CAPABILITY_UNAVAILABLE" },
         );
         return this.result(task, null, false, "CAPABILITY_UNAVAILABLE");
+      }
+
+      if (plan.capability === "research.search") {
+        return await this.runResearch(task, agent, organization.ensName, plan);
       }
 
       const product = await this.selectProduct(plan.productQuery);
@@ -184,6 +203,7 @@ export class TaskExecutionService {
           taskId: task._id.toString(),
           agentName: agent.ensName,
           agentWallet: agent.wallet as `0x${string}`,
+          organization: organization.ensName,
           capability: plan.capability,
           vendor: product.vendor,
           amountCents: totalAmountCents,
@@ -352,6 +372,208 @@ export class TaskExecutionService {
     }
   }
 
+  private async runResearch(
+    task: TaskDocument,
+    agent: AgentDocument,
+    organizationEnsName: string,
+    plan: {
+      capability: "research.search";
+      query: string;
+      domains?: string[];
+      maxResults: number;
+    },
+  ) {
+    const domains = [...new Set((plan.domains ?? []).map(normalizeDomain))].sort();
+    const authorizationId = `${task._id.toString()}:v${task.actionVersion}`;
+    const proposalDigest = createHash("sha256")
+      .update(
+        JSON.stringify({
+          taskId: task._id.toString(),
+          agentId: agent._id.toString(),
+          capability: plan.capability,
+          query: plan.query,
+          domains,
+          maxResults: plan.maxResults,
+          actionVersion: task.actionVersion,
+        }),
+      )
+      .digest("hex");
+    const proposal = await this.researchProposals.create({
+      taskId: task._id,
+      agentId: agent._id,
+      actionType: plan.capability,
+      query: plan.query,
+      domains,
+      maxResults: plan.maxResults,
+      ensAuthorized: false,
+      policyAuthorized: false,
+      status: "proposed",
+      authorizationId,
+      proposalDigest,
+      consumed: false,
+    });
+
+    try {
+      await this.transition(task, "ens_checking");
+      await this.record(
+        task,
+        agent,
+        "ENS_CHECKING",
+        "started",
+        "Verifying Research Agent authority from fresh ENS records.",
+        { capability: plan.capability },
+      );
+      proposal.status = "authorizing";
+      await proposal.save();
+      const verdict = await this.authorization.authorize(
+        {
+          taskId: task._id.toString(),
+          agentName: agent.ensName,
+          agentWallet: agent.wallet as `0x${string}`,
+          organization: organizationEnsName,
+          capability: plan.capability,
+          query: plan.query,
+          domains,
+          maxResults: plan.maxResults,
+        },
+        async (stage) => {
+          await this.transition(task, stage);
+          await this.record(
+            task,
+            agent,
+            stage === "ens_authorized" ? "ENS_AUTHORIZED" : "POLICY_CHECKING",
+            stage === "ens_authorized" ? "authorized" : "started",
+            stage === "ens_authorized"
+              ? "ENS identity and research capability verified."
+              : "Evaluating the immutable research proposal with organizational policy.",
+            { capability: plan.capability },
+          );
+        },
+      );
+
+      proposal.ensAuthorized = verdict.stage === "policy";
+      if (!verdict.authorized) {
+        const denialCode = verdict.code ?? "EXECUTION_FAILED";
+        proposal.publicDenialCode = denialCode;
+        proposal.status = "blocked";
+        await proposal.save();
+        await this.transition(task, "blocked");
+        await this.record(
+          task,
+          agent,
+          "AUTHORIZATION_BLOCKED",
+          "blocked",
+          verdict.message,
+          { code: denialCode, stage: verdict.stage },
+        );
+        return this.researchResult(task, proposal, false, denialCode);
+      }
+
+      if (!verdict.policyVersion) {
+        throw new Error("Authorized policy verdict omitted its version");
+      }
+      proposal.policyAuthorized = true;
+      proposal.policyVersion = verdict.policyVersion;
+      proposal.status = "authorized";
+      await proposal.save();
+      await this.transition(task, "policy_authorized");
+      await this.record(
+        task,
+        agent,
+        "POLICY_AUTHORIZED",
+        "authorized",
+        "Organizational policy approved the research proposal.",
+      );
+      await this.transition(task, "executing");
+      proposal.status = "executing";
+      await proposal.save();
+      await this.record(
+        task,
+        agent,
+        "CAPABILITY_EXECUTION_STARTED",
+        "started",
+        "Executing the exact authorized research query through Tavily.",
+        { provider: "tavily" },
+      );
+
+      const execution = await this.tavily.search({
+        query: proposal.query,
+        domains: proposal.domains,
+        maxResults: proposal.maxResults,
+      });
+      proposal.results = execution.results;
+      proposal.executionReference = execution.executionReference;
+      proposal.status = "consumed";
+      proposal.consumed = true;
+      await proposal.save();
+      await this.transition(task, "succeeded");
+      await this.record(
+        task,
+        agent,
+        "ACTION_EXECUTED",
+        "succeeded",
+        "Authorized research completed.",
+        {
+          provider: "tavily",
+          resultCount: execution.results.length,
+          ...(execution.executionReference
+            ? { executionReference: execution.executionReference }
+            : {}),
+        },
+      );
+      return this.researchResult(task, proposal, true);
+    } catch {
+      proposal.publicDenialCode = "EXECUTION_FAILED";
+      proposal.status = "failed";
+      await proposal.save().catch(() => undefined);
+      return this.failResearch(task, agent, proposal);
+    }
+  }
+
+  private async failResearch(
+    task: TaskDocument,
+    agent: AgentDocument,
+    proposal: ResearchProposalDocument,
+  ) {
+    if (validTransitions[task.status].includes("failed")) {
+      await this.transition(task, "failed");
+    }
+    await this.record(
+      task,
+      agent,
+      "TASK_FAILED",
+      "failed",
+      publicDenialMessages.EXECUTION_FAILED,
+      { code: "EXECUTION_FAILED" },
+    );
+    return this.researchResult(task, proposal, false, "EXECUTION_FAILED");
+  }
+
+  private researchResult(
+    task: TaskDocument,
+    proposal: ResearchProposalDocument,
+    succeeded: boolean,
+    code?: string,
+  ) {
+    return {
+      task: this.serializeTask(task),
+      action: {
+        id: proposal._id.toString(),
+        actionType: proposal.actionType,
+        query: proposal.query,
+        domains: proposal.domains,
+        maxResults: proposal.maxResults,
+        ensAuthorized: proposal.ensAuthorized,
+        policyAuthorized: proposal.policyAuthorized,
+        status: proposal.status,
+        executionReference: proposal.executionReference,
+        results: proposal.results,
+      },
+      succeeded,
+      code,
+    };
+  }
+
   async list(ownerWallet?: Address) {
     const organizationIds = ownerWallet
       ? await this.requireOrganizations()
@@ -371,6 +593,19 @@ export class TaskExecutionService {
     const task = await this.tasks.findById(taskId).exec();
     if (!task) throw new NotFoundException("Task not found");
     const action = await this.actions.findOne({ taskId: task._id }).exec();
+    if (!action) {
+      const research = await this.researchProposals
+        .findOne({ taskId: task._id })
+        .exec();
+      if (research) {
+        return this.researchResult(
+          task,
+          research,
+          task.status === "succeeded",
+          research.publicDenialCode,
+        );
+      }
+    }
     return this.result(
       task,
       action,
@@ -522,4 +757,13 @@ export class TaskExecutionService {
       updatedAt: task.updatedAt?.toISOString(),
     };
   }
+}
+
+function normalizeDomain(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .split("/")[0]!;
 }

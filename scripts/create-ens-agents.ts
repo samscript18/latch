@@ -84,7 +84,7 @@ const childLabels = [
     parentName,
   ),
   parseChildName(
-    required(process.env.DEMO_TRAVEL_AGENT_ENS, "DEMO_TRAVEL_AGENT_ENS"),
+    required(process.env.DEMO_RESEARCH_AGENT_ENS, "DEMO_RESEARCH_AGENT_ENS"),
     parentName,
   ),
 ];

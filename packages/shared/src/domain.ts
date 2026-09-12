@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-export const agentRoles = ["procurement", "travel"] as const;
+export const agentTypes = ["procurement", "research"] as const;
+export const agentRoles = ["procurement", "research"] as const;
 export const agentStatuses = ["active", "revoked"] as const;
-export const capabilities = ["procurement.purchase", "travel.booking"] as const;
+export const capabilities = ["procurement.purchase", "research.search"] as const;
 export const taskStatuses = [
   "created",
   "planning",
@@ -28,12 +29,14 @@ export const denialCodes = [
 ] as const;
 
 export const AgentRoleSchema = z.enum(agentRoles);
+export const AgentTypeSchema = z.enum(agentTypes);
 export const AgentStatusSchema = z.enum(agentStatuses);
 export const CapabilitySchema = z.enum(capabilities);
 export const TaskStatusSchema = z.enum(taskStatuses);
 export const DenialCodeSchema = z.enum(denialCodes);
 
 export type AgentRole = z.infer<typeof AgentRoleSchema>;
+export type AgentType = z.infer<typeof AgentTypeSchema>;
 export type AgentStatus = z.infer<typeof AgentStatusSchema>;
 export type Capability = z.infer<typeof CapabilitySchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
@@ -65,7 +68,7 @@ export interface EnsAuthorizationResult {
 
 export const requiredRoleByCapability = {
   "procurement.purchase": "procurement",
-  "travel.booking": "travel",
+  "research.search": "research",
 } as const satisfies Record<Capability, AgentRole>;
 
 export const publicDenialMessages = {

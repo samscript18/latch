@@ -40,8 +40,8 @@ export class Agent {
   @Prop({ type: String }) lastEnsBlock?: string;
   @Prop({ type: Date }) lastEnsCheckedAt?: Date;
 
-  @Prop({ enum: ["procurement", "travel"], type: String })
-  intendedRole?: "procurement" | "travel";
+  @Prop({ enum: ["procurement", "research"], type: String })
+  intendedRole?: "procurement" | "research";
 
   @Prop({ default: [], type: [String] })
   intendedCapabilities?: string[];

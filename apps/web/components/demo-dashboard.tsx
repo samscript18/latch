@@ -28,23 +28,41 @@ interface TaskView {
   status: string;
   requestedCapability?: string;
 }
+
 interface IntegrationStatus {
   ensv2: { state: string };
   confidentialPolicy: { provider: string; state: string };
   capability: { provider: string; state: string };
+  research: { provider: string; state: string };
 }
+
+interface ProcurementRunAction {
+  actionType: "procurement.purchase";
+  item: string;
+  quantity: number;
+  amountCents: number;
+  ensAuthorized: boolean;
+  policyAuthorized: boolean;
+}
+
+interface ResearchRunAction {
+  actionType: "research.search";
+  query: string;
+  domains: string[];
+  maxResults: number;
+  ensAuthorized: boolean;
+  policyAuthorized: boolean;
+  executionReference?: string;
+  results: Array<{ title: string; url: string; content: string; score?: number }>;
+}
+
 interface RunResult {
   task: TaskView;
-  action: null | {
-    item: string;
-    quantity: number;
-    amountCents: number;
-    ensAuthorized: boolean;
-    policyAuthorized: boolean;
-  };
+  action: null | ProcurementRunAction | ResearchRunAction;
   succeeded: boolean;
   code?: string;
 }
+
 interface TaskActivity {
   _id: string;
   type: string;
@@ -80,6 +98,7 @@ export function DemoDashboard() {
     },
     enabled: Boolean(session.token && session.profile?.complete),
   });
+
   const agents = useQuery({
     queryKey: ["agents", session.address],
     queryFn: () =>
@@ -88,6 +107,7 @@ export function DemoDashboard() {
       }),
     enabled: Boolean(session.token && session.profile?.complete),
   });
+
   const tasks = useQuery({
     queryKey: ["tasks", session.address],
     queryFn: () =>
@@ -96,10 +116,12 @@ export function DemoDashboard() {
       }),
     enabled: Boolean(session.token && session.profile?.complete),
   });
+
   const integrations = useQuery({
     queryKey: ["integrations"],
     queryFn: () => api<IntegrationStatus>("/integrations/status"),
   });
+
   const runTask = useMutation({
     mutationFn: async () => {
       const agentEnsName = selectedAgent || agents.data?.[0]?.ensName;
@@ -126,6 +148,7 @@ export function DemoDashboard() {
       ]);
     },
   });
+
   const taskActivity = useQuery({
     queryKey: ["task-activity", activeTaskId],
     queryFn: () =>
@@ -160,6 +183,7 @@ export function DemoDashboard() {
     setActiveTaskId(null);
     runTask.mutate();
   };
+
   const loadError = organization.error ?? agents.error ?? tasks.error;
   const metrics = organization.data?.metrics;
 
@@ -167,13 +191,18 @@ export function DemoDashboard() {
     <main className="dashboard-shell">
       <section className="dashboard-heading">
         <div>
-          <p className="eyebrow">Organization workspace</p>
-          <h1>{organization.data?.name ?? "Acme"}</h1>
-          <p className="muted">
-            {organization.data?.ensName ??
-              "ENS namespace pending configuration"}
+          <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#4efa94]">
+            <span className="size-1.5 rounded-full bg-[#4efa94]" />
+            Organization Workspace
+          </span>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
+            {organization.data?.name ?? "Acme"}
+          </h1>
+          <p className="mt-1 font-mono text-xs text-muted">
+            {organization.data?.ensName ?? "ENS namespace pending configuration"}
           </p>
         </div>
+
         <div className="integration-pills">
           <IntegrationPill
             label="ENSv2"
@@ -187,38 +216,59 @@ export function DemoDashboard() {
             label="Capability"
             value={integrations.data?.capability.state}
           />
+          <IntegrationPill
+            label="Research"
+            value={integrations.data?.research.state}
+          />
         </div>
       </section>
 
       {loadError && (
-        <div className="notice warning">
+        <div className="notice warning mb-6">
           API setup required: {loadError.message}
         </div>
       )}
 
+      {/* Metrics Row */}
       <section className="metrics-grid" aria-label="Organization metrics">
         <Metric
-          label="Agents"
+          label="AI Workers"
           value={metrics?.agentCount ?? agents.data?.length ?? "—"}
         />
-        <Metric label="Active tasks" value={metrics?.activeTasks ?? "—"} />
+        <Metric label="Active Tasks" value={metrics?.activeTasks ?? "—"} />
         <Metric
-          label="Authorized actions"
+          label="Authorized Actions"
           value={metrics?.authorizedActions ?? "—"}
         />
         <Metric
-          label="Blocked actions"
+          label="Blocked Decisions"
           value={metrics?.blockedActions ?? "—"}
         />
       </section>
 
+      {/* 2-Column Console Layout */}
       <div className="dashboard-grid">
+        {/* Left: AI Workers */}
         <section className="panel agent-panel">
-          <p className="eyebrow">Identity</p>
-          <h2>AI workers</h2>
-          <div className="agent-list">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <div>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#4efa94]">
+                Identity Layer
+              </span>
+              <h2 className="mt-1 text-xl font-semibold text-foreground">
+                Registered AI Workers
+              </h2>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 font-mono text-[10px] text-muted">
+              {agents.data?.length ?? 0} active
+            </span>
+          </div>
+
+          <div className="agent-list mt-5">
             {agents.isLoading && (
-              <p className="muted">Resolving agents from ENS…</p>
+              <p className="font-mono text-xs text-muted">
+                Resolving agents from ENS records…
+              </p>
             )}
             {agents.data?.map((agent) => {
               const status = agent.ensVerified
@@ -252,7 +302,7 @@ export function DemoDashboard() {
                       <dt>Policy</dt>
                       <dd>
                         {agent.identity?.policyVersion ??
-                          "Hidden / unavailable"}
+                          "Hidden / confidential"}
                       </dd>
                     </div>
                   </dl>
@@ -261,7 +311,7 @@ export function DemoDashboard() {
                       className="text-link"
                       href={`/app/agents/${encodeURIComponent(agent.ensName)}`}
                     >
-                      View agent
+                      Inspect Identity →
                     </a>
                     <button
                       className="danger-link"
@@ -277,16 +327,24 @@ export function DemoDashboard() {
           </div>
         </section>
 
+        {/* Right: Authorization Console */}
         <section className="panel action-panel">
-          <p className="eyebrow">Authorization console</p>
-          <h2>Propose an action</h2>
-          <p className="muted panel-copy">
-            The planner proposes. ENS and confidential policy decide. Execution
-            cannot bypass either check.
-          </p>
+          <div className="border-b border-white/5 pb-4">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#4efa94]">
+              Decision Pipeline
+            </span>
+            <h2 className="mt-1 text-xl font-semibold text-foreground">
+              Propose an Action
+            </h2>
+            <p className="mt-2 text-xs text-muted leading-relaxed">
+              The agent planner proposes. ENS and confidential policy decide.
+              Execution cannot bypass either checkpoint.
+            </p>
+          </div>
+
           <form onSubmit={submit} className="task-form">
             <label>
-              Agent
+              Acting Agent
               <select
                 value={selectedAgent}
                 onChange={(event) => setSelectedAgent(event.target.value)}
@@ -294,56 +352,89 @@ export function DemoDashboard() {
                 <option value="">Select an agent</option>
                 {agents.data?.map((agent) => (
                   <option value={agent.ensName} key={agent.id}>
-                    {agent.displayName}
+                    {agent.displayName} ({agent.ensName})
                   </option>
                 ))}
               </select>
             </label>
+
             <label>
-              Request
+              Task Prompt / Proposed Intent
               <textarea
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 rows={4}
+                placeholder="Describe action (e.g. Buy 20 monitors for our new office)"
               />
             </label>
+
             <button
-              className="button button-primary"
+              className="brand-button w-full"
               disabled={runTask.isPending || !agents.data?.length}
             >
-              {runTask.isPending ? "Authorizing…" : "Run through LATCH"}
+              <span>{runTask.isPending ? "Authorizing through LATCH…" : "Run through LATCH"}</span>
+              <svg
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
             </button>
           </form>
+
           {(runTask.error || revokeAgent.error) && (
-            <div className="notice error">
+            <div className="notice error mt-4">
               {(runTask.error ?? revokeAgent.error)?.message}
             </div>
           )}
+
           {runTask.isPending && activeTaskId && (
             <LiveAuthorizationTimeline activities={taskActivity.data ?? []} />
           )}
+
           {lastResult && <AuthorizationResult result={lastResult} />}
         </section>
       </div>
 
-      <section className="panel activity-panel">
-        <p className="eyebrow">Evidence</p>
-        <h2>Recent activity</h2>
+      {/* Recent Activity Evidence */}
+      <section className="panel activity-panel mt-6">
+        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+          <div>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#4efa94]">
+              Public Evidence
+            </span>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">
+              Recent Authorization Events
+            </h2>
+          </div>
+          <span className="font-mono text-[10px] text-muted">Real-time</span>
+        </div>
+
         <div className="activity-list">
           {organization.data?.recentActivity.length ? (
             organization.data.recentActivity.map((item) => (
               <div className="activity-row" key={item._id}>
                 <span className={`activity-dot activity-${item.result}`} />
-                <span>{item.message}</span>
-                <time>{new Date(item.createdAt).toLocaleString()}</time>
+                <span className="text-foreground/90">{item.message}</span>
+                <time>{new Date(item.createdAt).toLocaleTimeString()}</time>
               </div>
             ))
           ) : (
-            <p className="muted">No recorded activity yet.</p>
+            <p className="font-mono text-xs text-muted py-4">
+              No recorded activity yet. Run an action to generate cryptographic evidence.
+            </p>
           )}
         </div>
       </section>
 
+      {/* Revoke Modal Dialog */}
       {revokeTarget && (
         <div
           className="dialog-backdrop"
@@ -357,33 +448,38 @@ export function DemoDashboard() {
             aria-labelledby="revoke-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <p className="eyebrow">Permanent authority change</p>
-            <h2 id="revoke-title">Revoke {revokeTarget.displayName}?</h2>
-            <p>
-              Revocation writes <code>latch.status=revoked</code> on ENS and
-              removes delegated profile permission. Future LATCH execution stops
-              before private policy evaluation.
+            <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-red-400">
+              <span className="size-1.5 rounded-full bg-red-400" />
+              Permanent Authority Revocation
+            </span>
+            <h2 id="revoke-title" className="mt-2 text-2xl font-bold text-foreground">
+              Revoke {revokeTarget.displayName}?
+            </h2>
+            <p className="mt-3 text-xs text-muted leading-relaxed">
+              Revocation writes <code className="text-red-400">latch.status=revoked</code> to ENS records
+              and removes delegated capability permissions. Future actions stop immediately
+              before reaching private policy.
             </p>
             {!session.connected && (
-              <div className="notice warning">
-                Connect the organization admin wallet to continue.
+              <div className="notice warning mt-3">
+                Connect the organization admin wallet to sign this transaction.
               </div>
             )}
-            <div className="dialog-actions">
+            <div className="dialog-actions mt-6">
               <button
-                className="button button-quiet"
+                className="brand-button-secondary text-xs"
                 onClick={() => setRevokeTarget(null)}
               >
                 Cancel
               </button>
               <button
-                className="button button-danger"
+                className="button-danger"
                 disabled={!session.token || revokeAgent.isPending}
                 onClick={() => revokeAgent.mutate(revokeTarget)}
               >
                 {revokeAgent.isPending
-                  ? "Waiting for signature…"
-                  : "Revoke on ENS"}
+                  ? "Signing on ENS…"
+                  : "Revoke on ENSv2"}
               </button>
             </div>
           </section>
@@ -421,21 +517,38 @@ function AuthorizationResult({ result }: { result: RunResult }) {
   const executionFailed =
     result.code === "CAPABILITY_UNAVAILABLE" ||
     result.code === "EXECUTION_FAILED";
+  const isResearch = result.action?.actionType === "research.search";
+
   return (
     <div
-      className={`result-card ${result.succeeded ? "result-success" : "result-blocked"}`}
+      className={`result-card ${
+        result.succeeded ? "result-success" : "result-blocked"
+      }`}
     >
-      <p className="eyebrow">Decision</p>
-      <h3>
+      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#4efa94]">
+          Authorization Decision
+        </span>
+        <span
+          className={`font-mono text-[11px] font-semibold ${
+            result.succeeded ? "text-[#4efa94]" : "text-red-400"
+          }`}
+        >
+          {result.succeeded ? "SUCCESS" : "FAIL-CLOSED"}
+        </span>
+      </div>
+
+      <h3 className="mt-3">
         {result.succeeded
-          ? "Action authorized and executed"
+          ? "Action authorized and released to execution"
           : executionFailed
             ? "Authorized action was not executed"
-            : "Action blocked"}
+            : "Action blocked by security boundary"}
       </h3>
+
       <ol className="authorization-steps">
         <li className={ensAuthorized ? "passed" : "blocked"}>
-          ENS identity {ensAuthorized ? "verified" : "blocked"}
+          ENS Identity: {ensAuthorized ? "Verified onchain" : "Blocked / Revoked"}
         </li>
         <li
           className={
@@ -446,12 +559,12 @@ function AuthorizationResult({ result }: { result: RunResult }) {
                 : "blocked"
           }
         >
-          Private policy{" "}
+          Confidential Policy:{" "}
           {!policyEvaluated
-            ? "— not evaluated"
+            ? "Not reached"
             : policyAuthorized
-              ? "approved"
-              : "denied"}
+              ? "Approved inside TEE"
+              : "Denied by private rules"}
         </li>
         <li
           className={
@@ -462,21 +575,47 @@ function AuthorizationResult({ result }: { result: RunResult }) {
                 : "pending"
           }
         >
-          Capability execution{" "}
+          {isResearch ? "Tavily Research" : "Bazantic Execution"}:{" "}
           {result.succeeded
-            ? "completed"
+            ? "Action executed"
             : executionFailed
-              ? "failed safely"
-              : "— not started"}
+              ? "Failed safely"
+              : "Not released"}
         </li>
       </ol>
-      {result.action && (
-        <p>
+
+      {result.action?.actionType === "procurement.purchase" && (
+        <div className="mt-4 rounded-lg bg-white/[0.02] border border-white/5 p-3 font-mono text-xs text-muted">
           {result.action.quantity} × {result.action.item} · $
-          {(result.action.amountCents / 100).toLocaleString()}
-        </p>
+          {(result.action.amountCents / 100).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+          })}
+        </div>
       )}
-      {result.code && <code>{result.code}</code>}
+
+      {result.action?.actionType === "research.search" && (
+        <div className="research-result-summary">
+          <div>
+            <span>Authorized query</span>
+            <strong>{result.action.query}</strong>
+          </div>
+          {result.action.results?.map((item) => (
+            <a href={item.url} target="_blank" rel="noreferrer" key={item.url}>
+              <strong>{item.title}</strong>
+              <small>{item.content}</small>
+            </a>
+          ))}
+          {result.action.executionReference && (
+            <code>Request: {result.action.executionReference}</code>
+          )}
+        </div>
+      )}
+
+      {result.code && (
+        <div className="mt-2 font-mono text-[10px] text-muted/70">
+          Reason code: <code>{result.code}</code>
+        </div>
+      )}
     </div>
   );
 }
@@ -499,10 +638,19 @@ function LiveAuthorizationTimeline({
       "TASK_FAILED",
     ].includes(activity.type),
   );
+
   return (
     <div className="result-card live-result" aria-live="polite">
-      <p className="eyebrow">Live authorization</p>
-      <h3>Processing through the LATCH pipeline</h3>
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute h-full w-full animate-ping rounded-full bg-[#4efa94] opacity-75" />
+          <span className="relative h-2 w-2 rounded-full bg-[#4efa94]" />
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#4efa94]">
+          Processing Pipeline
+        </span>
+      </div>
+      <h3 className="mt-2">Evaluating cryptographic authorization…</h3>
       <ol className="live-steps">
         {visible.length ? (
           visible.map((activity) => (

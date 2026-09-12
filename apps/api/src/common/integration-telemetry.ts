@@ -1,4 +1,4 @@
-type IntegrationName = "ensv2" | "chainlink" | "bazantic";
+type IntegrationName = "ensv2" | "chainlink" | "bazantic" | "tavily";
 
 const lastSuccess = new Map<IntegrationName, string>();
 

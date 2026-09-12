@@ -17,6 +17,7 @@ export interface AuthorizeEnsInput {
   agentName: string;
   expectedWallet: Address;
   capability: Capability;
+  expectedOrganization?: string;
 }
 
 @Injectable()
@@ -43,9 +44,10 @@ export class EnsAuthorizationService {
     if (identity.wallet.toLowerCase() !== input.expectedWallet.toLowerCase()) {
       return this.deniedFrom(identity, capability, "ENS_WALLET_MISMATCH");
     }
-    const expectedOrganization = this.config
-      .get("DEMO_ORG_ENS", { infer: true })
-      ?.toLowerCase();
+    const expectedOrganization = (
+      input.expectedOrganization ??
+      this.config.get("DEMO_ORG_ENS", { infer: true })
+    )?.toLowerCase();
     if (
       !expectedOrganization ||
       identity.organization !== expectedOrganization

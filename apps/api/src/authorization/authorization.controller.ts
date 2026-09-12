@@ -69,9 +69,7 @@ export class AuthorizationController {
         taskId: task._id.toString(),
         agentName: agent.ensName,
         agentWallet: agent.wallet as `0x${string}`,
-        capability: action.actionType as
-          | "procurement.purchase"
-          | "travel.booking",
+        capability: "procurement.purchase",
         vendor: action.vendor,
         amountCents: action.amountCents,
       });

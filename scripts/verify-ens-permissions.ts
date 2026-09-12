@@ -40,14 +40,14 @@ const agents = [
     ) as Hex,
   },
   {
-    name: required(process.env.DEMO_TRAVEL_AGENT_ENS, "DEMO_TRAVEL_AGENT_ENS"),
+    name: required(process.env.DEMO_RESEARCH_AGENT_ENS, "DEMO_RESEARCH_AGENT_ENS"),
     wallet: required(
-      process.env.DEMO_TRAVEL_AGENT_WALLET,
-      "DEMO_TRAVEL_AGENT_WALLET",
+      process.env.DEMO_RESEARCH_AGENT_WALLET,
+      "DEMO_RESEARCH_AGENT_WALLET",
     ),
     privateKey: required(
-      process.env.DEMO_TRAVEL_AGENT_PRIVATE_KEY,
-      "DEMO_TRAVEL_AGENT_PRIVATE_KEY",
+      process.env.DEMO_RESEARCH_AGENT_PRIVATE_KEY,
+      "DEMO_RESEARCH_AGENT_PRIVATE_KEY",
     ) as Hex,
   },
 ];

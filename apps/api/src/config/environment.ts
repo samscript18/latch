@@ -28,9 +28,9 @@ export const EnvironmentSchema = z
 		DEMO_ORG_NAME: z.string().min(1).default("Acme"),
 		DEMO_ORG_ENS: z.string().optional(),
 		DEMO_PROCUREMENT_AGENT_ENS: z.string().optional(),
-		DEMO_TRAVEL_AGENT_ENS: z.string().optional(),
+		DEMO_RESEARCH_AGENT_ENS: z.string().optional(),
 		DEMO_PROCUREMENT_AGENT_WALLET: optionalAddress,
-		DEMO_TRAVEL_AGENT_WALLET: optionalAddress,
+		DEMO_RESEARCH_AGENT_WALLET: optionalAddress,
 		ADMIN_WALLET_ADDRESS: optionalAddress,
 		SEPOLIA_DEPLOYER_PRIVATE_KEY: z.preprocess(
 			emptyStringToUndefined,
@@ -50,6 +50,7 @@ export const EnvironmentSchema = z
 		BAZANTIC_GATEWAY_URL: optionalUrl,
 		BAZANTIC_RECIPE_ID: z.string().optional(),
 		BAZANTIC_API_KEY: z.string().optional(),
+		TAVILY_API_KEY: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
 		AUDIT_CONTRACT_ADDRESS: optionalAddress,
 	})
 	.superRefine((environment, context) => {
@@ -93,6 +94,13 @@ export const EnvironmentSchema = z
 				code: "custom",
 				message: "HACKATHON_MODE requires complete Bazantic Recipe configuration",
 				path: ["BAZANTIC_GATEWAY_URL"],
+			});
+		}
+		if (environment.HACKATHON_MODE && !environment.TAVILY_API_KEY) {
+			context.addIssue({
+				code: "custom",
+				message: "HACKATHON_MODE requires TAVILY_API_KEY for Research Agents",
+				path: ["TAVILY_API_KEY"],
 			});
 		}
 		if (environment.HACKATHON_MODE && !environment.AUDIT_CONTRACT_ADDRESS) {

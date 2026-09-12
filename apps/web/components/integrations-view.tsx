@@ -25,6 +25,12 @@ interface IntegrationStatus {
     lastSuccessfulInvocation: string | null;
     validForHackathon: boolean;
   };
+  research: {
+    provider: string;
+    state: string;
+    lastSuccessfulInvocation: string | null;
+    validForHackathon: boolean;
+  };
   planner: { provider: string; state: string; validForHackathon: boolean };
   database: { provider: string; state: string };
   auditContract: { network: string; state: string; address: string | null };
@@ -41,20 +47,27 @@ export function IntegrationsView() {
     <main className="detail-shell integration-shell app-page">
       <section className="detail-header">
         <div>
-          <p className="eyebrow">Runtime readiness</p>
-          <h1>Integration status</h1>
-          <p className="muted">
-            Connected means a live check succeeded. Configured means credentials
-            and endpoints are present but no success is being claimed.
+          <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#4efa94]">
+            <span className="size-1.5 rounded-full bg-[#4efa94]" />
+            Runtime Readiness
+          </span>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
+            Integration Status
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Live health verification of all external protocol integrations
+            powering the LATCH decision engine.
           </p>
         </div>
       </section>
+
       {status.error && (
         <div className="notice error">{status.error.message}</div>
       )}
+
       <section className="integration-grid">
         <StatusCard
-          name="ENSv2"
+          name="ENSv2 Identity"
           state={status.data?.ensv2.state}
           facts={[
             ["Network", status.data?.ensv2.network],
@@ -63,23 +76,23 @@ export function IntegrationsView() {
           ]}
         />
         <StatusCard
-          name="Chainlink CRE"
+          name="Chainlink CRE (Confidential)"
           state={status.data?.confidentialPolicy.state}
           facts={[
             ["Provider", status.data?.confidentialPolicy.provider],
             ["Environment", status.data?.confidentialPolicy.environment],
             [
-              "Last confidential simulation",
+              "Last simulation",
               status.data?.confidentialPolicy.lastSuccessfulSimulation,
             ],
             [
-              "Hackathon evidence",
+              "Demo readiness",
               evidenceLabel(status.data?.confidentialPolicy.validForHackathon),
             ],
           ]}
         />
         <StatusCard
-          name="Bazantic"
+          name="Bazantic Capabilities"
           state={status.data?.capability.state}
           facts={[
             ["Gateway", status.data?.capability.gateway],
@@ -89,31 +102,40 @@ export function IntegrationsView() {
               status.data?.capability.lastSuccessfulInvocation,
             ],
             [
-              "Hackathon evidence",
+              "Demo readiness",
               evidenceLabel(status.data?.capability.validForHackathon),
             ],
           ]}
         />
         <StatusCard
-          name="MongoDB"
+          name="Tavily Research"
+          state={status.data?.research.state}
+          facts={[
+            ["Provider", status.data?.research.provider],
+            ["Last invocation", status.data?.research.lastSuccessfulInvocation],
+            ["Demo readiness", evidenceLabel(status.data?.research.validForHackathon)],
+          ]}
+        />
+        <StatusCard
+          name="State Database"
           state={status.data?.database.state}
           facts={[["Provider", status.data?.database.provider]]}
         />
         <StatusCard
-          name="Audit contract"
+          name="Audit Evidence"
           state={status.data?.auditContract.state}
           facts={[
             ["Network", status.data?.auditContract.network],
-            ["Address", status.data?.auditContract.address],
+            ["Contract", status.data?.auditContract.address],
           ]}
         />
         <StatusCard
-          name="Task planner"
+          name="Task Planner"
           state={status.data?.planner.state}
           facts={[
             ["Provider", status.data?.planner.provider],
             [
-              "Hackathon evidence",
+              "Demo readiness",
               evidenceLabel(status.data?.planner.validForHackathon),
             ],
           ]}
@@ -132,19 +154,28 @@ function StatusCard({
   state?: string;
   facts: Array<[string, string | null | undefined]>;
 }) {
+  const isConnected = state === "connected" || state === "configured";
   return (
-    <article className="panel integration-card">
-      <div className="integration-card-heading">
-        <h2>{name}</h2>
-        <span className={`status status-${state ?? "checking"}`}>
+    <article className="integration-card">
+      <div className="flex items-center justify-between border-b border-white/5 pb-3">
+        <h2 className="text-base font-semibold text-foreground">{name}</h2>
+        <span
+          className={`status ${
+            isConnected ? "status-connected" : "status-checking"
+          }`}
+        >
           {state?.replaceAll("_", " ") ?? "checking"}
         </span>
       </div>
-      <dl>
+      <dl className="mt-4 space-y-2">
         {facts.map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{formatValue(value)}</dd>
+          <div className="flex items-center justify-between py-1" key={label}>
+            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+              {label}
+            </dt>
+            <dd className="font-mono text-xs text-foreground/90">
+              {formatValue(value)}
+            </dd>
           </div>
         ))}
       </dl>
@@ -155,7 +186,7 @@ function StatusCard({
 function formatValue(value: string | null | undefined) {
   if (!value) return "Not available";
   if (/^\d{4}-\d{2}-\d{2}T/.test(value))
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleTimeString();
   return value;
 }
 

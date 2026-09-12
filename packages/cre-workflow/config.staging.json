@@ -1,3 +1,4 @@
 {
-  "policySecretId": "LATCH_PROCUREMENT_POLICY"
+  "procurementPolicySecretId": "LATCH_PROCUREMENT_POLICY",
+  "researchPolicySecretId": "LATCH_RESEARCH_POLICY"
 }

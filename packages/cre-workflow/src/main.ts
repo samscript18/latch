@@ -16,7 +16,8 @@ import {
 
 const WorkflowConfigSchema = z
   .object({
-    policySecretId: z.string().trim().min(1),
+    procurementPolicySecretId: z.string().trim().min(1),
+    researchPolicySecretId: z.string().trim().min(1),
     authorizedKey: z
       .string()
       .regex(/^0x[a-fA-F0-9]{40}$/)
@@ -31,11 +32,14 @@ function onHttpTrigger(
   payload: HTTPPayload,
 ): PublicPolicyResult {
   const input = PublicPolicyInputSchema.parse(decodeJson(payload.input));
+  const secretId = input.capability === "procurement.purchase"
+    ? runtime.config.procurementPolicySecretId
+    : runtime.config.researchPolicySecretId;
   const privatePolicy = runtime
-    .getSecret({ id: runtime.config.policySecretId })
+    .getSecret({ id: secretId })
     .result();
 
-  // Do not log the request, secret, policy, vendor, amount, or detailed cause.
+  // Do not log the request, secret, policy inputs, or detailed cause.
   return evaluatePrivatePolicy(input, privatePolicy.value);
 }
 

@@ -27,20 +27,51 @@ export const EnsAgentIdentitySchema = z
   })
   .strict();
 
-export const PlannedActionSchema = z.object({
-  capability: CapabilitySchema,
-  productQuery: z.string().trim().min(1).max(200),
-  quantity: z.number().int().positive().max(10_000),
-});
+export const ProcurementPlannedActionSchema = z
+  .object({
+    capability: z.literal("procurement.purchase"),
+    productQuery: z.string().trim().min(1).max(200),
+    quantity: z.number().int().positive().max(10_000),
+  })
+  .strict();
 
-export const PolicyEvaluationInputSchema = z.object({
+export const ResearchPlannedActionSchema = z
+  .object({
+    capability: z.literal("research.search"),
+    query: z.string().trim().min(1).max(500),
+    domains: z.array(z.string().trim().min(1).max(253)).max(20).optional(),
+    maxResults: z.number().int().min(1).max(20),
+  })
+  .strict();
+
+export const PlannedActionSchema = z.discriminatedUnion("capability", [
+  ProcurementPlannedActionSchema,
+  ResearchPlannedActionSchema,
+]);
+
+export const ProcurementPolicyEvaluationInputSchema = z.object({
   taskId: z.string().trim().min(1).max(128),
   agent: EnsNameSchema,
-  capability: CapabilitySchema,
+  capability: z.literal("procurement.purchase"),
   vendor: z.string().trim().min(1).max(128),
   amountCents: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   policyVersion: z.string().trim().min(1).max(128),
-});
+}).strict();
+
+export const ResearchPolicyEvaluationInputSchema = z.object({
+  taskId: z.string().trim().min(1).max(128),
+  agent: EnsNameSchema,
+  capability: z.literal("research.search"),
+  query: z.string().trim().min(1).max(500),
+  domains: z.array(z.string().trim().min(1).max(253)).max(20).default([]),
+  maxResults: z.number().int().min(1).max(20),
+  policyVersion: z.string().trim().min(1).max(128),
+}).strict();
+
+export const PolicyEvaluationInputSchema = z.discriminatedUnion("capability", [
+  ProcurementPolicyEvaluationInputSchema,
+  ResearchPolicyEvaluationInputSchema,
+]);
 
 export const PolicyEvaluationResultSchema = z
   .object({
@@ -50,14 +81,26 @@ export const PolicyEvaluationResultSchema = z
   })
   .strict();
 
-export const AuthorizationRequestSchema = z.object({
+const AuthorizationRequestBaseSchema = z.object({
   taskId: z.string().trim().min(1).max(128),
   agentName: EnsNameSchema,
   agentWallet: EthereumAddressSchema,
-  capability: CapabilitySchema,
-  vendor: z.string().trim().min(1).max(128),
-  amountCents: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  organization: EnsNameSchema.optional(),
 });
+
+export const AuthorizationRequestSchema = z.discriminatedUnion("capability", [
+  AuthorizationRequestBaseSchema.extend({
+    capability: z.literal("procurement.purchase"),
+    vendor: z.string().trim().min(1).max(128),
+    amountCents: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  }).strict(),
+  AuthorizationRequestBaseSchema.extend({
+    capability: z.literal("research.search"),
+    query: z.string().trim().min(1).max(500),
+    domains: z.array(z.string().trim().min(1).max(253)).max(20).default([]),
+    maxResults: z.number().int().min(1).max(20),
+  }).strict(),
+]);
 
 export const AuthorizationResponseSchema = z.object({
   authorized: z.boolean(),

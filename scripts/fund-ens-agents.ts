@@ -38,7 +38,7 @@ const recipients: Address[] = [
     ),
   ),
   getAddress(
-    required(process.env.DEMO_TRAVEL_AGENT_WALLET, "DEMO_TRAVEL_AGENT_WALLET"),
+    required(process.env.DEMO_RESEARCH_AGENT_WALLET, "DEMO_RESEARCH_AGENT_WALLET"),
   ),
 ];
 const chain = createEnsV2HackathonChain(

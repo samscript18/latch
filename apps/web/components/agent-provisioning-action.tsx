@@ -273,28 +273,33 @@ export function AgentProvisioningAction({ agent }: { agent: AgentView }) {
   };
 
   if (agent.ensVerified)
-    return <span className="status status-active">Verified on ENSv2</span>;
+    return <span className="status status-active">✓ Verified on ENSv2</span>;
+
   return (
-    <div className="provision-action">
+    <div className="flex flex-col items-end gap-1.5">
       <button
-        className="button button-primary"
+        className="brand-button text-xs py-1.5 px-3.5"
         disabled={step !== "idle" || !configured}
         onClick={provision}
       >
-        {step === "idle"
-          ? "Provision on ENSv2"
-          : step === "resolver"
-            ? "Deploying resolver…"
-            : step === "name"
-              ? "Creating agent name…"
-              : step === "records"
-                ? "Writing protected records…"
-                : step === "permission"
-                  ? "Delegating profile record…"
-                  : "Verifying…"}
+        <span>
+          {step === "idle"
+            ? "Provision on ENSv2"
+            : step === "resolver"
+              ? "Deploying resolver…"
+              : step === "name"
+                ? "Creating agent name…"
+                : step === "records"
+                  ? "Writing protected records…"
+                  : step === "permission"
+                    ? "Delegating profile record…"
+                    : "Verifying…"}
+        </span>
       </button>
-      {error && <p className="field-error">{error}</p>}
-      <small>Transactions are signed by your connected admin wallet.</small>
+      {error && <p className="font-mono text-[10px] text-red-400">{error}</p>}
+      <small className="font-mono text-[9px] text-muted">
+        Transactions signed by connected admin wallet.
+      </small>
     </div>
   );
 }

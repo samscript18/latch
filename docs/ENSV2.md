@@ -112,7 +112,7 @@ Create these children in the parent's subregistry:
 
 ```text
 procurement.<parent>
-travel.<parent>
+research.<parent>
 ```
 
 The organization/admin must retain ownership and administrative resolver
@@ -147,7 +147,7 @@ Use this mapping:
 | Child                  | Address record                  | Protected role | Protected capability   |
 | ---------------------- | ------------------------------- | -------------- | ---------------------- |
 | `procurement.<parent>` | `DEMO_PROCUREMENT_AGENT_WALLET` | `procurement`  | `procurement.purchase` |
-| `travel.<parent>`      | `DEMO_TRAVEL_AGENT_WALLET`      | `travel`       | `travel.booking`       |
+| `research.<parent>`    | `DEMO_RESEARCH_AGENT_WALLET`    | `research`     | `research.search`      |
 
 Do not manually place a spending threshold, vendor allowlist, or other private
 policy value in ENS.
@@ -159,7 +159,7 @@ Set only the names after the parent and children exist:
 ```dotenv
 DEMO_ORG_ENS=<registered-parent>
 DEMO_PROCUREMENT_AGENT_ENS=procurement.<registered-parent>
-DEMO_TRAVEL_AGENT_ENS=travel.<registered-parent>
+DEMO_RESEARCH_AGENT_ENS=research.<registered-parent>
 ```
 
 The admin and two agent wallet addresses are already generated. Do not replace
@@ -207,7 +207,7 @@ Also inspect the endpoints directly:
 
 ```bash
 curl http://localhost:4000/ens/procurement.<registered-parent>
-curl http://localhost:4000/ens/travel.<registered-parent>
+curl http://localhost:4000/ens/research.<registered-parent>
 ```
 
 Evidence must include the resolver, resolved wallet, public LATCH records,

@@ -70,7 +70,7 @@ function printSection(title: string, checks: Check[]): void {
 
 async function main(): Promise<void> {
   const procurement = process.env.DEMO_PROCUREMENT_AGENT_ENS ?? "";
-  const travel = process.env.DEMO_TRAVEL_AGENT_ENS ?? "";
+  const research = process.env.DEMO_RESEARCH_AGENT_ENS ?? "";
   let agents: Array<Record<string, unknown>> = [];
   const agentEndpoint = await check("Agent endpoint", async () => {
     agents = (await api("/agents")) as unknown as Array<
@@ -88,12 +88,12 @@ async function main(): Promise<void> {
       label: "Procurement resolved",
       passed: Boolean(identity(procurement)?.wallet),
     },
-    { label: "Travel resolved", passed: Boolean(identity(travel)?.wallet) },
+    { label: "Research resolved", passed: Boolean(identity(research)?.wallet) },
     {
       label: "Procurement role",
       passed: identity(procurement)?.role === "procurement",
     },
-    { label: "Travel role", passed: identity(travel)?.role === "travel" },
+    { label: "Research role", passed: identity(research)?.role === "research" },
     {
       label: "Procurement active",
       passed: identity(procurement)?.status === "active",
@@ -131,7 +131,7 @@ async function main(): Promise<void> {
   ];
   const authorizationChecks: Check[] = [
     await check("Wrong-role agent blocked by ENS", async () => {
-      const result = await run(travel, "Buy 20 standard office monitors");
+      const result = await run(research, "Buy 20 standard office monitors");
       if (result.succeeded !== false || result.code !== "ROLE_MISMATCH") {
         return false;
       }

@@ -1,6 +1,6 @@
 # Chainlink confidential policy
 
-LATCH uses a real TypeScript CRE Confidential Workflow in `packages/cre-workflow`. The authorization orchestrator calls it only after fresh ENSv2 authorization succeeds. An unavailable, malformed, or version-mismatched result fails closed, and no capability may execute.
+LATCH uses a real TypeScript CRE Confidential Workflow in `packages/cre-workflow`. The authorization orchestrator calls it only after fresh ENSv2 authorization succeeds. It dispatches procurement and research actions to separate secret references. An unavailable, malformed, or version-mismatched result fails closed, and no capability may execute.
 
 The implementation is pinned to `@chainlink/cre-sdk@1.20.1`, verified against the current official Chainlink Confidential Workflows documentation on 2026-09-10.
 
@@ -9,11 +9,11 @@ The implementation is pinned to `@chainlink/cre-sdk@1.20.1`, verified against th
 `packages/cre-workflow/src/main.ts` registers an HTTP trigger with `handlerInTee`. Inside its `TeeRuntime` callback it:
 
 1. strictly validates the public action proposal;
-2. fetches `LATCH_PROCUREMENT_POLICY` with `runtime.getSecret`;
+2. selects `LATCH_PROCUREMENT_POLICY` or `LATCH_RESEARCH_POLICY` from the validated capability and fetches it with `runtime.getSecret`;
 3. validates and evaluates the private policy;
 4. returns only a minimal public verdict.
 
-The private secret contains the demo-only maximum autonomous spend and vendor allowlist. Neither value is present in workflow configuration, application logs, MongoDB, audit events, API responses, or browser state. The handler also avoids logging its request and intermediates.
+The procurement secret contains the demo-only maximum autonomous spend and vendor allowlist. The research secret contains allowed/blocked domains and the maximum result count. These private values are absent from workflow configuration, application logs, MongoDB, audit events, API responses, and browser state. The handler also avoids logging its request and intermediates.
 
 An approved result is:
 
@@ -60,6 +60,7 @@ Provide the demo policy through your shell or an uncommitted `.env`. The value b
 
 ```bash
 export LATCH_PROCUREMENT_POLICY_ALL='{"policyVersion":"procurement-v1","maxAutonomousSpendCents":200000,"allowedVendors":["demo-vendor-a","demo-vendor-b"]}'
+export LATCH_RESEARCH_POLICY_ALL='{"policyVersion":"research-v1","allowedDomains":["*.edu","who.int","nih.gov"],"blockedDomains":[],"maxResults":10}'
 ```
 
 Then simulate from the repository root. The npm command keeps this repository on npm while invoking the official CRE CLI:

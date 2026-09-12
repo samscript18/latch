@@ -4,10 +4,12 @@ import {
   Controller,
   Get,
   Inject,
+  Post,
   Put,
   Req,
   UseGuards,
 } from "@nestjs/common";
+import { AgentTypeSchema } from "@latch/shared";
 import { z } from "zod";
 import { WalletAuthGuard } from "../auth/wallet-auth.guard.js";
 import type { WalletAuthenticatedRequest } from "../auth/auth.types.js";
@@ -23,12 +25,9 @@ const onboardingSchema = z
       .array(
         z
           .object({
-            displayName: z.string().trim().min(2).max(100),
             ensName: z.string().trim().min(3).max(255),
             wallet: z.string(),
-            role: z.enum(["procurement", "travel"]),
-            capability: z.enum(["procurement.purchase", "travel.booking"]),
-            policyVersion: z.string().trim().min(1).max(128),
+            type: AgentTypeSchema,
           })
           .strict(),
       )
@@ -36,6 +35,30 @@ const onboardingSchema = z
       .max(20),
   })
   .strict();
+
+const policySchema = z.discriminatedUnion("provider", [
+  z.object({ provider: z.literal("chainlink") }).strict(),
+  z
+    .object({
+      provider: z.literal("manual"),
+      procurement: z
+        .object({
+          policyVersion: z.string().trim().min(1).max(128),
+          maxAutonomousSpendCents: z.number().int().nonnegative(),
+          allowedVendors: z.array(z.string().trim().min(1).max(128)).max(100),
+        })
+        .strict(),
+      research: z
+        .object({
+          policyVersion: z.string().trim().min(1).max(128),
+          allowedDomains: z.array(z.string().trim().min(1).max(253)).max(100),
+          blockedDomains: z.array(z.string().trim().min(1).max(253)).max(100),
+          maxResults: z.number().int().min(1).max(20),
+        })
+        .strict(),
+    })
+    .strict(),
+]);
 
 @Controller("organization")
 export class OrganizationsController {
@@ -52,7 +75,41 @@ export class OrganizationsController {
 
   @Put("me")
   @UseGuards(WalletAuthGuard)
-  onboard(@Req() request: WalletAuthenticatedRequest, @Body() body: unknown) {
+  update(@Req() request: WalletAuthenticatedRequest, @Body() body: unknown) {
+    const parsed = this.parseOnboarding(body);
+    return this.organizations.updateForOwner(
+      request.walletSession!.address,
+      parsed,
+    );
+  }
+
+  @Post("me")
+  @UseGuards(WalletAuthGuard)
+  create(@Req() request: WalletAuthenticatedRequest, @Body() body: unknown) {
+    const parsed = this.parseOnboarding(body);
+    return this.organizations.createForOwner(
+      request.walletSession!.address,
+      parsed,
+    );
+  }
+
+  @Put("me/policy")
+  @UseGuards(WalletAuthGuard)
+  updatePolicy(
+    @Req() request: WalletAuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    const parsed = policySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid organization policy configuration");
+    }
+    return this.organizations.updatePolicy(
+      request.walletSession!.address,
+      parsed.data,
+    );
+  }
+
+  private parseOnboarding(body: unknown) {
     const parsed = onboardingSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException({
@@ -63,9 +120,6 @@ export class OrganizationsController {
         })),
       });
     }
-    return this.organizations.upsertForOwner(
-      request.walletSession!.address,
-      parsed.data,
-    );
+    return parsed.data;
   }
 }

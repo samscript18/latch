@@ -19,9 +19,9 @@ async function main(): Promise<void> {
       wallet: getAddress(required("DEMO_PROCUREMENT_AGENT_WALLET")),
     },
     {
-      displayName: "Travel Agent",
-      ensName: normalize(required("DEMO_TRAVEL_AGENT_ENS")),
-      wallet: getAddress(required("DEMO_TRAVEL_AGENT_WALLET")),
+      displayName: "Research Agent",
+      ensName: normalize(required("DEMO_RESEARCH_AGENT_ENS")),
+      wallet: getAddress(required("DEMO_RESEARCH_AGENT_WALLET")),
     },
   ];
 

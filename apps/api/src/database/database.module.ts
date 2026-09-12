@@ -19,6 +19,10 @@ import {
   OrganizationSchema,
 } from "./schemas/organization.schema.js";
 import { Task, TaskSchema } from "./schemas/task.schema.js";
+import {
+  ResearchProposal,
+  ResearchProposalSchema,
+} from "./schemas/research-proposal.schema.js";
 
 @Module({
   imports: [
@@ -35,6 +39,7 @@ import { Task, TaskSchema } from "./schemas/task.schema.js";
       { name: Agent.name, schema: AgentSchema },
       { name: Task.name, schema: TaskSchema },
       { name: ActionRequest.name, schema: ActionRequestSchema },
+      { name: ResearchProposal.name, schema: ResearchProposalSchema },
       { name: Activity.name, schema: ActivitySchema },
       { name: AuthChallenge.name, schema: AuthChallengeSchema },
       { name: AuthSession.name, schema: AuthSessionSchema },

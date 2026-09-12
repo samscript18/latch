@@ -15,12 +15,19 @@ const plannedActionJsonSchema = {
   properties: {
     capability: {
       type: "string",
-      enum: ["procurement.purchase", "travel.booking"],
+      enum: ["procurement.purchase", "research.search"],
     },
     productQuery: { type: "string", minLength: 1, maxLength: 200 },
     quantity: { type: "integer", minimum: 1, maximum: 10_000 },
+    query: { type: "string", minLength: 1, maxLength: 500 },
+    domains: {
+      type: "array",
+      items: { type: "string" },
+      maxItems: 20,
+    },
+    maxResults: { type: "integer", minimum: 1, maximum: 20 },
   },
-  required: ["capability", "productQuery", "quantity"],
+  required: ["capability"],
 };
 
 @Injectable()
@@ -49,6 +56,7 @@ export class GeminiTaskPlanner implements TaskPlanner {
       config: {
         systemInstruction:
           "Convert the request into one proposed LATCH action. You may only select a listed capability. " +
+          "For procurement return productQuery and quantity. For research return query, optional domains, and maxResults. " +
           "You propose intent only and must never claim authorization, a policy verdict, an ENS role, or a price.",
         responseMimeType: "application/json",
         responseJsonSchema: plannedActionJsonSchema,

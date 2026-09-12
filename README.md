@@ -44,7 +44,7 @@ Bazantic is the top-level bounty orchestrator: its Recipe calls a real catalog s
 
 - Procurement agent + standard monitors: authorized and executed with live integrations.
 - Procurement agent + premium monitors: blocked by confidential policy.
-- Travel agent + procurement request: blocked by ENS before policy.
+- Research agent + procurement request: blocked by ENS before policy.
 - Revoked procurement agent: blocked by ENS before policy.
 
 ## Local setup
@@ -128,7 +128,7 @@ All external failures deny execution. Admin mutations require a one-time signed 
 
 - Real ENS names, Sepolia funds, CRE access, and Bazantic dashboard configuration must be supplied by the project owner.
 - Chainlink Confidential Workflows are currently private beta; local simulation is available, while deployment requires owner access and secure HTTP-trigger authentication configuration.
-- The travel capability is modeled for authorization demonstrations but intentionally not executable in the procurement MVP.
+- The Research Agent executes `research.search` through Tavily only after ENS and policy authorization; cross-capability requests fail before policy or tool execution.
 - Final hosting and production deployment are outside this repository's scope.
 
 ## Hackathon scope

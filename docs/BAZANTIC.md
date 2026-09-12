@@ -1,5 +1,11 @@
 # Bazantic Best Recipe integration
 
+Bazantic remains the orchestration and execution path for Procurement Agents.
+Research Agents use the same immutable LATCH authorization boundary and call
+Tavily only after ENS and policy approval. A Bazantic Recipe may invoke the
+authenticated LATCH task flow for research without changing the published
+procurement proposal contract.
+
 Bazantic is the top-level orchestrator for the bounty path. LATCH does not call
 the Recipe. The Recipe combines a real catalog service with the authenticated
 LATCH Gateway and continues to execution only after LATCH approves the exact
@@ -110,7 +116,7 @@ POST /bazantic/proposals/{authorizationId}/executions
 LATCH rejects a mismatched digest or any proposal that is not authorized. The
 same execution reference is idempotent; a different second execution conflicts.
 A valid receipt creates the sanitized `ActionExecuted` audit event.
-
+x
 ## Recipe instructions
 
 Create a Recipe named `LATCH AUTHORIZED PROCUREMENT` with these rules:

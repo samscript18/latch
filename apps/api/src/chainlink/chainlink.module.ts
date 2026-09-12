@@ -1,25 +1,19 @@
 import { Module } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import type { Environment } from "../config/environment.js";
 import { ChainlinkCrePolicyProvider } from "./chainlink-cre-policy.provider.js";
 import { LocalPolicyProvider } from "./local-policy.provider.js";
 import { CONFIDENTIAL_POLICY_PROVIDER } from "./policy-provider.interface.js";
+import { DatabaseModule } from "../database/database.module.js";
+import { OrganizationPolicyProvider } from "./organization-policy.provider.js";
 
 @Module({
+  imports: [DatabaseModule],
   providers: [
     LocalPolicyProvider,
     ChainlinkCrePolicyProvider,
+    OrganizationPolicyProvider,
     {
       provide: CONFIDENTIAL_POLICY_PROVIDER,
-      inject: [ConfigService, LocalPolicyProvider, ChainlinkCrePolicyProvider],
-      useFactory: (
-        config: ConfigService<Environment, true>,
-        local: LocalPolicyProvider,
-        chainlink: ChainlinkCrePolicyProvider,
-      ) =>
-        config.get("POLICY_PROVIDER", { infer: true }) === "chainlink"
-          ? chainlink
-          : local,
+      useExisting: OrganizationPolicyProvider,
     },
   ],
   exports: [CONFIDENTIAL_POLICY_PROVIDER],

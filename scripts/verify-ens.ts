@@ -24,7 +24,7 @@ async function resolve(name: string) {
 async function main(): Promise<void> {
   const names = [
     process.env.DEMO_PROCUREMENT_AGENT_ENS,
-    process.env.DEMO_TRAVEL_AGENT_ENS,
+    process.env.DEMO_RESEARCH_AGENT_ENS,
   ].filter((name): name is string => Boolean(name));
   if (names.length !== 2)
     throw new Error("Both demo agent ENS names are required");

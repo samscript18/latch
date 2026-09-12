@@ -6,12 +6,12 @@ export const capabilityRegistry = {
     provider: "bazantic",
     executable: true,
   },
-  "travel.booking": {
-    requiredRole: requiredRoleByCapability["travel.booking"],
-    provider: "bazantic",
-    executable: false,
+  "research.search": {
+    requiredRole: requiredRoleByCapability["research.search"],
+    provider: "tavily",
+    executable: true,
   },
 } as const satisfies Record<
   Capability,
-  { requiredRole: string; provider: "bazantic"; executable: boolean }
+  { requiredRole: string; provider: "bazantic" | "tavily"; executable: boolean }
 >;

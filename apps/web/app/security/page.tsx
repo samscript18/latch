@@ -1,41 +1,43 @@
 import { PublicPage } from "../../components/site-chrome";
+
 export default function SecurityPage() {
   return (
     <PublicPage
-      eyebrow="Security"
+      eyebrow="Security Model"
       title="Authority is verified at action time."
-      intro="LATCH fails closed across identity, confidential policy and execution, while keeping the AI model outside the trust boundary."
+      intro="LATCH fails closed across identity, confidential policy, and execution, keeping the autonomous model outside the trust boundary."
     >
       <section className="security-grid">
         {[
           [
-            "Fresh ENS authorization",
-            "Role, status, wallet and capabilities are resolved from ENS for authorization—not trusted from a database flag.",
+            "Fresh ENS Authorization",
+            "Role, status, wallet address, and capabilities are resolved from ENS records for every proposed action—never trusted from a stale database flag.",
           ],
           [
-            "Wallet-authenticated administration",
-            "Organization changes require a nonce, a wallet signature and a short-lived server session.",
+            "Wallet-Authenticated Admin",
+            "Organization onboarding and identity revocation require cryptographic signatures from the admin wallet controlling the ENS namespace.",
           ],
           [
-            "Private policy isolation",
-            "Sensitive rules are evaluated by the Chainlink confidential workflow and are never stored in MongoDB.",
+            "Private Policy Isolation",
+            "Sensitive corporate rules are evaluated by Chainlink confidential computing workflows and are never stored in databases or sent to client browsers.",
           ],
           [
-            "Immutable proposals",
-            "Product, vendor, quantity and price are bound to one authorization. Material changes require another decision.",
+            "Immutable Action Proposals",
+            "Product, vendor, quantity, and dollar amount are cryptographically bound to one authorization. Material modifications require a new verdict.",
           ],
           [
-            "Replay protection",
-            "An authorization is consumed once and cannot be reused for another execution.",
+            "Replay Protection",
+            "Each authorization token is single-use and consumed upon release, preventing duplicate executions or side-channel replays.",
           ],
           [
-            "Honest integration state",
-            "Local providers are visibly labeled and cannot start in hackathon mode as if they were sponsor integrations.",
+            "Honest Integration State",
+            "Local test providers are visibly labeled and fail closed if sponsor integration requirements are missing in hackathon mode.",
           ],
-        ].map(([t, c]) => (
-          <article className="panel" key={t}>
-            <h2>{t}</h2>
-            <p>{c}</p>
+        ].map(([title, copy]) => (
+          <article className="vestra-card p-8" key={title}>
+            <div className="inner-border-mask" />
+            <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+            <p className="mt-3 text-sm text-muted leading-relaxed">{copy}</p>
           </article>
         ))}
       </section>

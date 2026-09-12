@@ -58,15 +58,15 @@ const agents = [
     policyVersion: "procurement-v1",
   },
   {
-    displayName: "Travel Agent",
-    name: required(environment.DEMO_TRAVEL_AGENT_ENS, "DEMO_TRAVEL_AGENT_ENS"),
+    displayName: "Research Agent",
+    name: required(environment.DEMO_RESEARCH_AGENT_ENS, "DEMO_RESEARCH_AGENT_ENS"),
     wallet: requiredAddress(
-      environment.DEMO_TRAVEL_AGENT_WALLET,
-      "DEMO_TRAVEL_AGENT_WALLET",
+      environment.DEMO_RESEARCH_AGENT_WALLET,
+      "DEMO_RESEARCH_AGENT_WALLET",
     ),
-    role: "travel" as const,
-    capability: "travel.booking" as const,
-    policyVersion: "travel-v1",
+    role: "research" as const,
+    capability: "research.search" as const,
+    policyVersion: "research-v1",
   },
 ];
 

@@ -20,6 +20,10 @@ import {
 } from "../database/schemas/activity.schema.js";
 import { Agent, type AgentDocument } from "../database/schemas/agent.schema.js";
 import { Task, type TaskDocument } from "../database/schemas/task.schema.js";
+import {
+  Organization,
+  type OrganizationDocument,
+} from "../database/schemas/organization.schema.js";
 
 interface CatalogProposal {
   recipeInvocationId: string;
@@ -47,6 +51,8 @@ export class BazanticRecipeService {
   constructor(
     @InjectModel(Task.name) private readonly tasks: Model<TaskDocument>,
     @InjectModel(Agent.name) private readonly agents: Model<AgentDocument>,
+    @InjectModel(Organization.name)
+    private readonly organizations: Model<OrganizationDocument>,
     @InjectModel(ActionRequest.name)
     private readonly actions: Model<ActionRequestDocument>,
     @InjectModel(Activity.name)
@@ -138,6 +144,8 @@ export class BazanticRecipeService {
     ]);
     if (!task || !agent)
       throw new NotFoundException("Proposal context missing");
+    const organization = await this.organizations.findById(task.organizationId).lean().exec();
+    if (!organization) throw new NotFoundException("Proposal organization missing");
 
     try {
       const requestedHash = await this.audit.recordRequested({
@@ -163,6 +171,7 @@ export class BazanticRecipeService {
           taskId: task._id.toString(),
           agentName: agent.ensName,
           agentWallet: agent.wallet as `0x${string}`,
+          organization: organization.ensName,
           capability: "procurement.purchase",
           vendor: action.vendor,
           amountCents: action.amountCents,

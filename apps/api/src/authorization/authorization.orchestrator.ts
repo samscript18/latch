@@ -43,6 +43,7 @@ export class AuthorizationOrchestrator {
       agentName: request.agentName,
       expectedWallet: request.agentWallet,
       capability: request.capability,
+      expectedOrganization: request.organization,
     });
 
     if (!ens.authorized) {
@@ -79,14 +80,26 @@ export class AuthorizationOrchestrator {
 
     let verdict;
     try {
-      verdict = await this.policy.evaluate({
-        taskId: request.taskId,
-        agent: request.agentName,
-        capability: request.capability,
-        vendor: request.vendor,
-        amountCents: request.amountCents,
-        policyVersion: ens.policyVersion,
-      });
+      verdict = await this.policy.evaluate(
+        request.capability === "procurement.purchase"
+          ? {
+              taskId: request.taskId,
+              agent: request.agentName,
+              capability: request.capability,
+              vendor: request.vendor,
+              amountCents: request.amountCents,
+              policyVersion: ens.policyVersion,
+            }
+          : {
+              taskId: request.taskId,
+              agent: request.agentName,
+              capability: request.capability,
+              query: request.query,
+              domains: request.domains,
+              maxResults: request.maxResults,
+              policyVersion: ens.policyVersion,
+            },
+      );
     } catch {
       this.activity.record({
         ...baseActivity,

@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -7,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
-import { getAddress, type Address } from "viem";
+import { getAddress, isAddress, type Address } from "viem";
 import { normalize } from "viem/ens";
 import {
   Activity,
@@ -20,7 +21,8 @@ import {
 } from "../database/schemas/organization.schema.js";
 import { EnsAdminService } from "../ens/ens-admin.service.js";
 import { EnsService } from "../ens/ens.service.js";
-import type { EnsAgentIdentity } from "@latch/shared";
+import type { AgentType, EnsAgentIdentity } from "@latch/shared";
+import { getAgentTypeDefinition } from "./agent-type.registry.js";
 
 @Injectable()
 export class AgentsService {
@@ -46,16 +48,62 @@ export class AgentsService {
       .exec();
     if (!organization) return [];
     const agents = await this.agents
-      .find({ organizationId: organization._id })
+      .find({
+        organizationId: organization._id,
+        intendedRole: { $in: ["procurement", "research"] },
+      })
       .sort({ displayName: 1 })
       .exec();
     return Promise.all(agents.map((agent) => this.toFreshView(agent)));
+  }
+
+  async createForOwner(
+    ownerWallet: Address,
+    input: { type: AgentType; ensName: string; wallet: string },
+  ) {
+    const organization = await this.organizations
+      .findOne({ ownerWallet: ownerWallet.toLowerCase() })
+      .exec();
+    if (!organization) {
+      throw new NotFoundException("Complete organization setup first");
+    }
+    const ensName = this.normalizeName(input.ensName);
+    if (!ensName.endsWith(`.${organization.ensName}`)) {
+      throw new ConflictException(
+        `${ensName} must be a subname of ${organization.ensName}`,
+      );
+    }
+    if (!isAddress(input.wallet, { strict: false })) {
+      throw new ConflictException("Invalid agent wallet");
+    }
+    const template = getAgentTypeDefinition(input.type);
+    const existing = await this.agents.findOne({ ensName }).lean().exec();
+    if (existing) {
+      throw new ConflictException("That ENS identity is already registered");
+    }
+    const agent = await this.agents.create({
+      displayName: template.displayName,
+      ensName,
+      wallet: getAddress(input.wallet).toLowerCase(),
+      organizationId: organization._id,
+      intendedRole: template.role,
+      intendedCapabilities: [...template.capabilities],
+      intendedPolicyVersion: template.policyVersion,
+      provisioningStatus: "pending_ens",
+    });
+    return this.serialize(agent, null, false);
   }
 
   async findByEnsName(unsafeName: string) {
     const name = this.normalizeName(unsafeName);
     const agent = await this.agents.findOne({ ensName: name }).exec();
     if (!agent) throw new NotFoundException("Agent not found");
+    if (
+      agent.intendedRole !== "procurement" &&
+      agent.intendedRole !== "research"
+    ) {
+      throw new NotFoundException("Agent type is not supported by this MVP");
+    }
     return this.toFreshView(agent);
   }
 
