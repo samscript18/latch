@@ -9,6 +9,7 @@ import { useWalletSession } from "./wallet-session";
 
 const navigation = [
 	{ href: "/app", label: "Overview", icon: "⌂" },
+	{ href: "/app/try", label: "Try Now", icon: "↯" },
 	{ href: "/app/agents", label: "AI Workers", icon: "◇" },
 	{ href: "/app/tasks", label: "Tasks", icon: "✓" },
 	{ href: "/app/activity", label: "Activity Stream", icon: "≋" },

@@ -1,5 +1,5 @@
-import { DemoDashboard } from "../../components/demo-dashboard";
+import { OverviewDashboard } from "../../components/overview-dashboard";
 
 export default function WorkspacePage() {
-  return <DemoDashboard />;
+  return <OverviewDashboard />;
 }
