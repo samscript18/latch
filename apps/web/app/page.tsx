@@ -1,91 +1,153 @@
-const stages = [
-  "ENS identity",
-  "Private policy",
-  "Approved capability",
-  "Execute",
+import Link from "next/link";
+import { SiteFooter, SiteHeader } from "../components/site-chrome";
+
+const layers = [
+  [
+    "01",
+    "Identity",
+    "ENSv2 resolves the agent wallet, organization, role, status and assigned capabilities from organization-controlled records.",
+  ],
+  [
+    "02",
+    "Authority",
+    "LATCH verifies those live records for every proposed action. Revoked or incorrectly assigned agents stop here.",
+  ],
+  [
+    "03",
+    "Private policy",
+    "Chainlink CRE evaluates company rules in a confidential workflow without revealing thresholds or vendor restrictions.",
+  ],
+  [
+    "04",
+    "Execution",
+    "A Bazantic Recipe coordinates the external service and executes only the exact action that passed authorization.",
+  ],
 ];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen px-6 py-8 md:px-12 lg:px-20">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between border-b border-[var(--line)] pb-5">
-        <div className="text-sm font-bold tracking-[0.28em]">LATCH</div>
-        <a
-          className="rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm font-semibold text-white"
-          href="/demo"
-        >
-          Launch Demo
-        </a>
-      </nav>
-
-      <section className="mx-auto grid max-w-7xl gap-14 py-20 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:py-28">
+    <main className="public-shell">
+      <SiteHeader />
+      <section className="hero-section">
         <div>
-          <p className="mb-6 text-xs font-bold uppercase tracking-[0.24em] text-[var(--accent)]">
-            Authority infrastructure for AI
+          <p className="eyebrow">
+            Authority infrastructure for autonomous agents
           </p>
-          <h1 className="max-w-4xl text-5xl font-semibold leading-[1.03] tracking-[-0.045em] md:text-7xl">
-            Give AI workers a job — without giving them the keys to everything.
+          <h1>
+            Give AI workers a job—without giving them the keys to everything.
           </h1>
-          <p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-            LATCH gives autonomous agents verifiable identities, limited
-            authority, approved capabilities, and confidential policy
-            enforcement.
+          <p className="hero-copy">
+            LATCH gives every autonomous agent a verifiable identity, bounded
+            organizational authority, confidential policy enforcement and a
+            controlled path to real services.
           </p>
-          <a
-            className="mt-9 inline-flex rounded-md bg-[var(--accent)] px-6 py-3.5 text-sm font-bold text-white"
-            href="/demo"
-          >
-            Launch Demo
-          </a>
+          <div className="hero-actions">
+            <Link className="button button-primary" href="/app">
+              Start your workspace
+            </Link>
+            <Link className="button" href="/architecture">
+              Explore the architecture
+            </Link>
+          </div>
+          <div className="trust-line">
+            <span>Built on</span>
+            <strong>ENSv2</strong>
+            <strong>Chainlink CRE</strong>
+            <strong>Bazantic</strong>
+          </div>
         </div>
-
-        <div className="rounded-2xl border border-[var(--line)] bg-white p-7 shadow-[0_20px_60px_rgba(20,32,29,0.08)]">
-          <p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
-            Authorization path
-          </p>
-          <div className="space-y-3">
-            <div className="rounded-lg border border-[var(--line)] px-4 py-3 text-sm font-semibold">
-              AI action proposed
+        <div className="pipeline-visual">
+          <div className="pipeline-request">
+            <small>Proposed action</small>
+            <strong>Purchase 20 office monitors</strong>
+            <span>Agent proposes. It does not approve.</span>
+          </div>
+          {[
+            "ENS identity verified",
+            "Organizational authority confirmed",
+            "Private policy approved",
+            "Capability execution released",
+          ].map((stage, index) => (
+            <div className="pipeline-stage" key={stage}>
+              <span>{index + 1}</span>
+              <strong>{stage}</strong>
+              <i>✓</i>
             </div>
-            {stages.map((stage) => (
-              <div key={stage} className="flex items-center gap-3">
-                <span
-                  className="ml-5 h-4 border-l border-[var(--line)]"
-                  aria-hidden="true"
-                />
-                <div className="flex flex-1 items-center justify-between rounded-lg bg-[#eef4f0] px-4 py-3 text-sm font-semibold">
-                  <span>{stage}</span>
-                  <span className="text-[var(--accent)]" aria-label="verified">
-                    ✓
-                  </span>
-                </div>
-              </div>
-            ))}
+          ))}
+        </div>
+      </section>
+      <section className="problem-section">
+        <p className="eyebrow">The missing control layer</p>
+        <div>
+          <h2>Tool access is not authority.</h2>
+          <p>
+            AI agents can hold wallets, call APIs and initiate transactions.
+            Traditional access controls answer whether an agent can reach a
+            tool. They do not determine whether this agent, acting for this
+            organization, may perform this specific action right now.
+          </p>
+        </div>
+      </section>
+      <section className="layers-section">
+        <header>
+          <p className="eyebrow">How LATCH decides</p>
+          <h2>Four independent layers. One fail-closed decision.</h2>
+        </header>
+        <div className="layer-grid">
+          {layers.map(([number, title, copy]) => (
+            <article key={number}>
+              <span>{number}</span>
+              <h3>{title}</h3>
+              <p>{copy}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="outcomes-section">
+        <div>
+          <p className="eyebrow">Accountable autonomy</p>
+          <h2>
+            An identity that can be trusted. Authority that can be withdrawn.
+          </h2>
+          <p>
+            Organizations retain control of authorization-critical ENS records.
+            Agents cannot promote themselves, change protected capabilities or
+            reverse revocation.
+          </p>
+          <Link className="text-link" href="/security">
+            Read the security model →
+          </Link>
+        </div>
+        <div className="outcome-list">
+          <div>
+            <span className="outcome-good">Allowed</span>
+            <strong>Correct agent + compliant action</strong>
+            <small>Authorized, executed and recorded</small>
+          </div>
+          <div>
+            <span className="outcome-bad">Blocked</span>
+            <strong>Correct agent + forbidden action</strong>
+            <small>Stopped by confidential policy</small>
+          </div>
+          <div>
+            <span className="outcome-bad">Blocked</span>
+            <strong>Wrong or revoked agent</strong>
+            <small>Stopped before policy or execution</small>
           </div>
         </div>
       </section>
-
-      <section className="mx-auto grid max-w-7xl gap-px overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--line)] md:grid-cols-3">
-        {[
-          [
-            "Verifiable Identity",
-            "Resolve who the agent is and what role the organization assigned on ENSv2.",
-          ],
-          [
-            "Private Policy",
-            "Evaluate each proposed action without exposing sensitive organizational rules.",
-          ],
-          [
-            "Revocable Authority",
-            "Withdraw future authority while preserving a stable identity and audit history.",
-          ],
-        ].map(([title, copy]) => (
-          <article className="bg-white p-7" key={title}>
-            <h2 className="font-semibold">{title}</h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{copy}</p>
-          </article>
-        ))}
+      <section className="cta-section">
+        <p className="eyebrow">Create your authority boundary</p>
+        <h2>Put every agent action through a verifiable decision.</h2>
+        <p>
+          Connect the organization wallet, configure its ENS namespace and
+          register the AI workers LATCH should protect.
+        </p>
+        <Link className="button button-primary" href="/app">
+          Launch LATCH
+        </Link>
       </section>
+      <SiteFooter />
     </main>
   );
 }

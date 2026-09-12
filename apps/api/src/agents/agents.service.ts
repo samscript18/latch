@@ -39,6 +39,19 @@ export class AgentsService {
     return Promise.all(agents.map((agent) => this.toFreshView(agent)));
   }
 
+  async listForOwner(ownerWallet: Address) {
+    const organization = await this.organizations
+      .findOne({ ownerWallet: ownerWallet.toLowerCase() })
+      .lean()
+      .exec();
+    if (!organization) return [];
+    const agents = await this.agents
+      .find({ organizationId: organization._id })
+      .sort({ displayName: 1 })
+      .exec();
+    return Promise.all(agents.map((agent) => this.toFreshView(agent)));
+  }
+
   async findByEnsName(unsafeName: string) {
     const name = this.normalizeName(unsafeName);
     const agent = await this.agents.findOne({ ensName: name }).exec();

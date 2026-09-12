@@ -6,6 +6,7 @@ import { DatabaseModule } from "../database/database.module.js";
 import { PlanningModule } from "../planning/planning.module.js";
 import { TaskExecutionService } from "./task-execution.service.js";
 import { TasksController } from "./tasks.controller.js";
+import { AuthModule } from "../auth/auth.module.js";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { TasksController } from "./tasks.controller.js";
     PlanningModule,
     CapabilitiesModule,
     AuthorizationModule,
+    AuthModule,
   ],
   controllers: [TasksController],
   providers: [TaskExecutionService],

@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { api } from "../lib/api";
 
 interface IntegrationStatus {
@@ -39,19 +38,7 @@ export function IntegrationsView() {
   });
 
   return (
-    <main className="detail-shell integration-shell">
-      <header className="topbar">
-        <Link className="wordmark" href="/">
-          LATCH
-        </Link>
-        <nav className="demo-nav" aria-label="Demo navigation">
-          <Link href="/demo">Workspace</Link>
-          <Link href="/demo/activity">Activity</Link>
-          <Link aria-current="page" href="/demo/integrations">
-            Integrations
-          </Link>
-        </nav>
-      </header>
+    <main className="detail-shell integration-shell app-page">
       <section className="detail-header">
         <div>
           <p className="eyebrow">Runtime readiness</p>

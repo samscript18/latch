@@ -1,4 +1,6 @@
-import { Controller, Get, Inject } from "@nestjs/common";
+import { Controller, Get, Inject, Req, UseGuards } from "@nestjs/common";
+import { WalletAuthGuard } from "../auth/wallet-auth.guard.js";
+import type { WalletAuthenticatedRequest } from "../auth/auth.types.js";
 import { ActivityService } from "./activity.service.js";
 
 @Controller("activity")
@@ -8,7 +10,8 @@ export class ActivityController {
   ) {}
 
   @Get()
-  list() {
-    return this.activity.list();
+  @UseGuards(WalletAuthGuard)
+  list(@Req() request: WalletAuthenticatedRequest) {
+    return this.activity.list(request.walletSession!.address);
   }
 }

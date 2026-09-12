@@ -6,8 +6,12 @@ import {
   Inject,
   Param,
   Post,
+  Req,
+  UseGuards,
 } from "@nestjs/common";
 import { z } from "zod";
+import { WalletAuthGuard } from "../auth/wallet-auth.guard.js";
+import type { WalletAuthenticatedRequest } from "../auth/auth.types.js";
 import { TaskExecutionService } from "./task-execution.service.js";
 
 const createTaskSchema = z
@@ -19,36 +23,41 @@ const createTaskSchema = z
 const taskIdSchema = z.string().regex(/^[a-fA-F0-9]{24}$/);
 
 @Controller("tasks")
+@UseGuards(WalletAuthGuard)
 export class TasksController {
   constructor(
     @Inject(TaskExecutionService) private readonly tasks: TaskExecutionService,
   ) {}
 
   @Post()
-  create(@Body() body: unknown) {
+  create(@Body() body: unknown, @Req() req: WalletAuthenticatedRequest) {
     const request = createTaskSchema.safeParse(body);
     if (!request.success) throw new BadRequestException("Invalid task request");
-    return this.tasks.create(request.data.agentEnsName, request.data.prompt);
+    return this.tasks.create(
+      request.data.agentEnsName,
+      request.data.prompt,
+      req.walletSession!.address,
+    );
   }
 
   @Get()
-  list() {
-    return this.tasks.list();
+  list(@Req() req: WalletAuthenticatedRequest) {
+    return this.tasks.list(req.walletSession!.address);
   }
 
   @Get(":id")
-  findOne(@Param("id") id: string) {
-    return this.tasks.findOne(this.parseId(id));
+  findOne(@Param("id") id: string, @Req() req: WalletAuthenticatedRequest) {
+    return this.tasks.findOne(this.parseId(id), req.walletSession!.address);
   }
 
   @Post(":id/run")
-  run(@Param("id") id: string) {
-    return this.tasks.run(this.parseId(id));
+  run(@Param("id") id: string, @Req() req: WalletAuthenticatedRequest) {
+    return this.tasks.run(this.parseId(id), req.walletSession!.address);
   }
 
   @Get(":id/activity")
-  activity(@Param("id") id: string) {
-    return this.tasks.activity(this.parseId(id));
+  activity(@Param("id") id: string, @Req() req: WalletAuthenticatedRequest) {
+    return this.tasks.activity(this.parseId(id), req.walletSession!.address);
   }
 
   private parseId(id: string): string {

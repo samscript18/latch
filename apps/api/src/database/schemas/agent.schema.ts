@@ -40,6 +40,22 @@ export class Agent {
   @Prop({ type: String }) lastEnsBlock?: string;
   @Prop({ type: Date }) lastEnsCheckedAt?: Date;
 
+  @Prop({ enum: ["procurement", "travel"], type: String })
+  intendedRole?: "procurement" | "travel";
+
+  @Prop({ default: [], type: [String] })
+  intendedCapabilities?: string[];
+
+  @Prop({ trim: true, type: String })
+  intendedPolicyVersion?: string;
+
+  @Prop({
+    default: "pending_ens",
+    enum: ["pending_ens", "verified"],
+    type: String,
+  })
+  provisioningStatus!: "pending_ens" | "verified";
+
   createdAt!: Date;
   updatedAt!: Date;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, type AgentView } from "../../../../lib/api";
 
@@ -13,10 +14,10 @@ export default function AgentDetailPage() {
   });
   const identity = agent.data?.identity;
   return (
-    <main className="detail-shell">
-      <a className="text-link" href="/demo">
-        ← Authorization console
-      </a>
+    <main className="detail-shell app-page">
+      <Link className="text-link" href="/app/agents">
+        ← All AI workers
+      </Link>
       {agent.isLoading && (
         <p className="muted detail-loading">Resolving fresh ENS records…</p>
       )}
@@ -48,7 +49,7 @@ export default function AgentDetailPage() {
             </span>
           </div>
           <div className="detail-grid">
-            <DetailSection
+            <Detail
               title="Identity"
               rows={[
                 ["Wallet", identity?.wallet],
@@ -56,47 +57,30 @@ export default function AgentDetailPage() {
                 ["Resolver", identity?.resolver],
               ]}
             />
-            <DetailSection
+            <Detail
               title="Permissions"
               rows={[
                 ["Role", identity?.role],
                 ["Status", identity?.status],
-                ["Agent profile", "Delegated safe record only"],
+                ["Profile record", "Delegated only when configured"],
               ]}
             />
-            <DetailSection
+            <Detail
               title="Capabilities"
               rows={[
                 ["Assigned", identity?.capabilities.join(", ")],
                 ["Policy version", identity?.policyVersion],
-                ["Private rules", "Hidden"],
+                ["Private rules", "Confidential"],
               ]}
             />
           </div>
-          <section className="panel activity-panel">
-            <p className="eyebrow">Recent activity</p>
-            <h2>Agent authorization history</h2>
-            <div className="activity-list">
-              {agent.data.recentActivity.length ? (
-                agent.data.recentActivity.map((item) => (
-                  <div className="activity-row" key={item.id}>
-                    <span className={`activity-dot activity-${item.result}`} />
-                    <span>{item.message}</span>
-                    <time>{new Date(item.createdAt).toLocaleString()}</time>
-                  </div>
-                ))
-              ) : (
-                <p className="muted">No activity recorded for this agent.</p>
-              )}
-            </div>
-          </section>
         </>
       )}
     </main>
   );
 }
 
-function DetailSection({
+function Detail({
   title,
   rows,
 }: {

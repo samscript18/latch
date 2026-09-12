@@ -4,10 +4,12 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { publicDenialMessages, type TaskStatus } from "@latch/shared";
 import type { Model } from "mongoose";
+import type { Address } from "viem";
 import { AuditService } from "../audit/audit.service.js";
 import { AuthorizationOrchestrator } from "../authorization/authorization.orchestrator.js";
 import { capabilityRegistry } from "../capabilities/capability-registry.js";
@@ -26,6 +28,10 @@ import {
 } from "../database/schemas/activity.schema.js";
 import { Agent, type AgentDocument } from "../database/schemas/agent.schema.js";
 import { Task, type TaskDocument } from "../database/schemas/task.schema.js";
+import {
+  Organization,
+  type OrganizationDocument,
+} from "../database/schemas/organization.schema.js";
 import {
   TASK_PLANNER,
   type TaskPlanner,
@@ -61,13 +67,20 @@ export class TaskExecutionService {
     private readonly authorization: AuthorizationOrchestrator,
     @Inject(AuditService)
     private readonly audit: AuditService,
+    @Optional()
+    @InjectModel(Organization.name)
+    private readonly organizations?: Model<OrganizationDocument>,
   ) {}
 
-  async create(agentEnsName: string, prompt: string) {
+  async create(agentEnsName: string, prompt: string, ownerWallet?: Address) {
     const agent = await this.agents
       .findOne({ ensName: agentEnsName.toLowerCase() })
       .exec();
     if (!agent) throw new NotFoundException("Agent not found");
+    await this.assertOrganizationOwner(
+      agent.organizationId.toString(),
+      ownerWallet,
+    );
     const task = await this.tasks.create({
       organizationId: agent.organizationId,
       agentId: agent._id,
@@ -79,7 +92,8 @@ export class TaskExecutionService {
     return this.serializeTask(task);
   }
 
-  async run(taskId: string) {
+  async run(taskId: string, ownerWallet?: Address) {
+    await this.assertTaskOwner(taskId, ownerWallet);
     const task = await this.tasks.findOneAndUpdate(
       { _id: taskId, status: "created" },
       { $set: { status: "planning" } },
@@ -338,16 +352,22 @@ export class TaskExecutionService {
     }
   }
 
-  async list() {
+  async list(ownerWallet?: Address) {
+    const organizationIds = ownerWallet
+      ? await this.requireOrganizations()
+          .find({ ownerWallet: ownerWallet.toLowerCase() })
+          .distinct("_id")
+      : undefined;
     const tasks = await this.tasks
-      .find()
+      .find(organizationIds ? { organizationId: { $in: organizationIds } } : {})
       .sort({ createdAt: -1 })
       .limit(100)
       .exec();
     return tasks.map((task) => this.serializeTask(task));
   }
 
-  async findOne(taskId: string) {
+  async findOne(taskId: string, ownerWallet?: Address) {
+    await this.assertTaskOwner(taskId, ownerWallet);
     const task = await this.tasks.findById(taskId).exec();
     if (!task) throw new NotFoundException("Task not found");
     const action = await this.actions.findOne({ taskId: task._id }).exec();
@@ -359,7 +379,8 @@ export class TaskExecutionService {
     );
   }
 
-  async activity(taskId: string) {
+  async activity(taskId: string, ownerWallet?: Address) {
+    await this.assertTaskOwner(taskId, ownerWallet);
     return this.activities
       .find({ taskId })
       .sort({ createdAt: 1 })
@@ -373,6 +394,36 @@ export class TaskExecutionService {
     if (!product)
       throw new BadRequestException("No product candidate was returned");
     return product;
+  }
+
+  private async assertTaskOwner(taskId: string, ownerWallet?: Address) {
+    if (!ownerWallet) return;
+    const task = await this.tasks.findById(taskId).lean().exec();
+    if (!task) throw new NotFoundException("Task not found");
+    await this.assertOrganizationOwner(
+      task.organizationId.toString(),
+      ownerWallet,
+    );
+  }
+
+  private async assertOrganizationOwner(
+    organizationId: string,
+    ownerWallet?: Address,
+  ) {
+    if (!ownerWallet) return;
+    const organization = await this.requireOrganizations()
+      .findOne({ _id: organizationId, ownerWallet: ownerWallet.toLowerCase() })
+      .lean()
+      .exec();
+    if (!organization)
+      throw new NotFoundException("Organization resource not found");
+  }
+
+  private requireOrganizations() {
+    if (!this.organizations) {
+      throw new Error("Organization model is unavailable");
+    }
+    return this.organizations;
   }
 
   private async transition(

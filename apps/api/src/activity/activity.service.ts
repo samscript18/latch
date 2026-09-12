@@ -1,7 +1,13 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model, Types } from "mongoose";
+import type { Address } from "viem";
 import type { Environment } from "../config/environment.js";
 import {
   Activity,
@@ -33,20 +39,25 @@ export class ActivityService {
     private readonly activities: Model<ActivityDocument>,
     @InjectModel(Organization.name)
     private readonly organizations: Model<OrganizationDocument>,
+    @Optional()
     @Inject(ConfigService)
-    private readonly config: ConfigService<Environment, true>,
+    private readonly config?: ConfigService<Environment, true>,
   ) {}
 
-  async list() {
+  async list(ownerWallet?: Address) {
     const organization = await this.organizations
-      .findOne({
-        ensName: this.config
-          .get("DEMO_ORG_ENS", { infer: true })
-          ?.toLowerCase(),
-      })
+      .findOne(
+        ownerWallet
+          ? { ownerWallet: ownerWallet.toLowerCase() }
+          : {
+              ensName: this.config
+                ?.get("DEMO_ORG_ENS", { infer: true })
+                ?.toLowerCase(),
+            },
+      )
       .exec();
     if (!organization)
-      throw new NotFoundException("Demo organization has not been seeded");
+      throw new NotFoundException("Organization onboarding is incomplete");
 
     const rows = await this.activities
       .aggregate<ActivityProjection>([

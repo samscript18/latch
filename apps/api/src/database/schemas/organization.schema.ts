@@ -19,9 +19,19 @@ export class Organization {
   @Prop({ lowercase: true, required: true, trim: true, type: String })
   ownerWallet!: string;
 
+  @Prop({ trim: true, type: String })
+  website?: string;
+
+  @Prop({ trim: true, type: String })
+  industry?: string;
+
+  @Prop({ default: "complete", enum: ["incomplete", "complete"], type: String })
+  onboardingStatus!: "incomplete" | "complete";
+
   createdAt!: Date;
   updatedAt!: Date;
 }
 
 export type OrganizationDocument = HydratedDocument<Organization>;
 export const OrganizationSchema = SchemaFactory.createForClass(Organization);
+OrganizationSchema.index({ ownerWallet: 1 }, { unique: true });

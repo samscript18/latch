@@ -1,10 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
 import { api, type AgentView } from "../lib/api";
+import { useWalletSession } from "./wallet-session";
 
 interface OrganizationView {
   name: string;
@@ -59,10 +58,7 @@ const shortAddress = (value: string | null | undefined) =>
 
 export function DemoDashboard() {
   const queryClient = useQueryClient();
-  const { address, isConnected } = useAccount();
-  const { connectors, connect } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { signMessageAsync } = useSignMessage();
+  const session = useWalletSession();
   const [prompt, setPrompt] = useState("Buy 20 monitors for our new office");
   const [selectedAgent, setSelectedAgent] = useState("");
   const [revokeTarget, setRevokeTarget] = useState<AgentView | null>(null);
@@ -70,16 +66,35 @@ export function DemoDashboard() {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
   const organization = useQuery({
-    queryKey: ["organization"],
-    queryFn: () => api<OrganizationView>("/organization"),
+    queryKey: ["organization-me-dashboard", session.address, session.token],
+    queryFn: async () => {
+      const response = await api<{ organization: OrganizationView }>(
+        "/organization/me",
+        {
+          headers: { authorization: `Bearer ${session.token}` },
+        },
+      );
+      if (!response.organization)
+        throw new Error("Complete organization setup first");
+      return response.organization;
+    },
+    enabled: Boolean(session.token && session.profile?.complete),
   });
   const agents = useQuery({
-    queryKey: ["agents"],
-    queryFn: () => api<AgentView[]>("/agents"),
+    queryKey: ["agents", session.address],
+    queryFn: () =>
+      api<AgentView[]>("/agents", {
+        headers: { authorization: `Bearer ${session.token}` },
+      }),
+    enabled: Boolean(session.token && session.profile?.complete),
   });
   const tasks = useQuery({
-    queryKey: ["tasks"],
-    queryFn: () => api<TaskView[]>("/tasks"),
+    queryKey: ["tasks", session.address],
+    queryFn: () =>
+      api<TaskView[]>("/tasks", {
+        headers: { authorization: `Bearer ${session.token}` },
+      }),
+    enabled: Boolean(session.token && session.profile?.complete),
   });
   const integrations = useQuery({
     queryKey: ["integrations"],
@@ -91,10 +106,14 @@ export function DemoDashboard() {
       if (!agentEnsName) throw new Error("Select an agent first");
       const task = await api<TaskView>("/tasks", {
         method: "POST",
+        headers: { authorization: `Bearer ${session.token}` },
         body: JSON.stringify({ agentEnsName, prompt }),
       });
       setActiveTaskId(task.id);
-      return api<RunResult>(`/tasks/${task.id}/run`, { method: "POST" });
+      return api<RunResult>(`/tasks/${task.id}/run`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${session.token}` },
+      });
     },
     onSuccess: async (result) => {
       setLastResult(result);
@@ -109,27 +128,18 @@ export function DemoDashboard() {
   });
   const taskActivity = useQuery({
     queryKey: ["task-activity", activeTaskId],
-    queryFn: () => api<TaskActivity[]>(`/tasks/${activeTaskId}/activity`),
+    queryFn: () =>
+      api<TaskActivity[]>(`/tasks/${activeTaskId}/activity`, {
+        headers: { authorization: `Bearer ${session.token}` },
+      }),
     enabled: Boolean(activeTaskId),
     refetchInterval: runTask.isPending ? 750 : false,
   });
 
   const revokeAgent = useMutation({
     mutationFn: async (agent: AgentView) => {
-      if (!address)
-        throw new Error("Connect the organization admin wallet first");
-      const challenge = await api<{ nonce: string; message: string }>(
-        "/auth/nonce",
-        {
-          method: "POST",
-          body: JSON.stringify({ address }),
-        },
-      );
-      const signature = await signMessageAsync({ message: challenge.message });
-      const session = await api<{ token: string }>("/auth/verify", {
-        method: "POST",
-        body: JSON.stringify({ address, nonce: challenge.nonce, signature }),
-      });
+      if (!session.token)
+        throw new Error("Sign in with the organization admin wallet first");
       return api(`/agents/${encodeURIComponent(agent.ensName)}/revoke`, {
         method: "POST",
         headers: { authorization: `Bearer ${session.token}` },
@@ -155,31 +165,6 @@ export function DemoDashboard() {
 
   return (
     <main className="dashboard-shell">
-      <header className="topbar">
-        <Link className="wordmark" href="/">
-          LATCH
-        </Link>
-        <nav className="demo-nav" aria-label="Demo navigation">
-          <Link href="/demo">Workspace</Link>
-          <Link href="/demo/activity">Activity</Link>
-          <Link href="/demo/integrations">Integrations</Link>
-        </nav>
-        {isConnected ? (
-          <button className="button button-quiet" onClick={() => disconnect()}>
-            {shortAddress(address)}
-          </button>
-        ) : (
-          <button
-            className="button button-quiet"
-            onClick={() =>
-              connectors[0] && connect({ connector: connectors[0] })
-            }
-          >
-            Connect admin wallet
-          </button>
-        )}
-      </header>
-
       <section className="dashboard-heading">
         <div>
           <p className="eyebrow">Organization workspace</p>
@@ -274,7 +259,7 @@ export function DemoDashboard() {
                   <div className="agent-actions">
                     <a
                       className="text-link"
-                      href={`/demo/agents/${encodeURIComponent(agent.ensName)}`}
+                      href={`/app/agents/${encodeURIComponent(agent.ensName)}`}
                     >
                       View agent
                     </a>
@@ -379,7 +364,7 @@ export function DemoDashboard() {
               removes delegated profile permission. Future LATCH execution stops
               before private policy evaluation.
             </p>
-            {!isConnected && (
+            {!session.connected && (
               <div className="notice warning">
                 Connect the organization admin wallet to continue.
               </div>
@@ -393,7 +378,7 @@ export function DemoDashboard() {
               </button>
               <button
                 className="button button-danger"
-                disabled={!isConnected || revokeAgent.isPending}
+                disabled={!session.token || revokeAgent.isPending}
                 onClick={() => revokeAgent.mutate(revokeTarget)}
               >
                 {revokeAgent.isPending

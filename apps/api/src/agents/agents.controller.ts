@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { AdminWalletGuard } from "../auth/admin-wallet.guard.js";
+import { WalletAuthGuard } from "../auth/wallet-auth.guard.js";
 import type { WalletAuthenticatedRequest } from "../auth/auth.types.js";
 import { AgentsService } from "./agents.service.js";
 
@@ -16,8 +17,9 @@ export class AgentsController {
   constructor(@Inject(AgentsService) private readonly agents: AgentsService) {}
 
   @Get()
-  list() {
-    return this.agents.list();
+  @UseGuards(WalletAuthGuard)
+  list(@Req() request: WalletAuthenticatedRequest) {
+    return this.agents.listForOwner(request.walletSession!.address);
   }
 
   @Get(":ensName")

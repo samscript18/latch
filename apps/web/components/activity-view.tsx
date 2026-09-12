@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { api } from "../lib/api";
+import { useWalletSession } from "./wallet-session";
 
 type StageResult = "passed" | "failed" | "not_run";
 
@@ -20,26 +20,19 @@ interface ActivityItem {
 }
 
 export function ActivityView() {
+  const session = useWalletSession();
   const activity = useQuery({
-    queryKey: ["activity"],
-    queryFn: () => api<ActivityItem[]>("/activity"),
+    queryKey: ["activity", session.address],
+    queryFn: () =>
+      api<ActivityItem[]>("/activity", {
+        headers: { authorization: `Bearer ${session.token}` },
+      }),
+    enabled: Boolean(session.token && session.profile?.complete),
     refetchInterval: 5_000,
   });
 
   return (
-    <main className="detail-shell audit-shell">
-      <header className="topbar">
-        <Link className="wordmark" href="/">
-          LATCH
-        </Link>
-        <nav className="demo-nav" aria-label="Demo navigation">
-          <Link href="/demo">Workspace</Link>
-          <Link aria-current="page" href="/demo/activity">
-            Activity
-          </Link>
-          <Link href="/demo/integrations">Integrations</Link>
-        </nav>
-      </header>
+    <main className="detail-shell audit-shell app-page">
       <section className="detail-header">
         <div>
           <p className="eyebrow">Public audit evidence</p>
