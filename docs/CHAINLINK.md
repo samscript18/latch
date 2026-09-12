@@ -13,7 +13,7 @@ The implementation is pinned to `@chainlink/cre-sdk@1.20.1`, verified against th
 3. validates and evaluates the private policy;
 4. returns only a minimal public verdict.
 
-The procurement secret contains the demo-only maximum autonomous spend and vendor allowlist. The research secret contains allowed/blocked domains and the maximum result count. These private values are absent from workflow configuration, application logs, MongoDB, audit events, API responses, and browser state. The handler also avoids logging its request and intermediates.
+The procurement secret contains the organization’s maximum autonomous spend and vendor allowlist. The research secret contains allowed/blocked domains and the maximum result count. These private values are absent from workflow configuration, application logs, MongoDB, audit events, API responses, and browser state. The handler also avoids logging its request and intermediates.
 
 An approved result is:
 
@@ -37,7 +37,7 @@ Amount, vendor, version, and any other policy failure all produce the same exter
 
 The strict result schema rejects extra fields. This prevents the workflow from exposing the threshold, allowlist, or a detailed cause.
 
-## Local tests
+## Evaluator verification
 
 The pure evaluator has deterministic tests for the required allowed, excessive-amount, unapproved-vendor, version-mismatch, and non-disclosure cases:
 
@@ -56,10 +56,10 @@ Install the current CRE CLI using Chainlink's official instructions and verify i
 cre version
 ```
 
-Provide the demo policy through your shell or an uncommitted `.env`. The value below is the internal deterministic fixture required by `AGENTS.md`; never show the setup command or secret value in public demo captures, logs, API responses, or UI.
+Provide a controlled validation policy through the process environment or secret-injection mechanism. Never show the setup command or secret value in evidence, logs, API responses, or UI.
 
 ```bash
-export LATCH_PROCUREMENT_POLICY_ALL='{"policyVersion":"procurement-v1","maxAutonomousSpendCents":200000,"allowedVendors":["demo-vendor-a","demo-vendor-b"]}'
+export LATCH_PROCUREMENT_POLICY_ALL='{"policyVersion":"procurement-v1","maxAutonomousSpendCents":200000,"allowedVendors":["approved-vendor-a","approved-vendor-b"]}'
 export LATCH_RESEARCH_POLICY_ALL='{"policyVersion":"research-v1","allowedDomains":["*.edu","who.int","nih.gov"],"blockedDomains":[],"maxResults":10}'
 ```
 
@@ -71,27 +71,27 @@ npm run cre:simulate
 
 At the HTTP-trigger prompt, use the configured procurement ENS name and one of these public inputs.
 
-Allowed fixture:
+Allowed validation vector:
 
 ```json
 {
   "taskId": "verify-approved",
   "agent": "procurement.<configured-parent-name>",
   "capability": "procurement.purchase",
-  "vendor": "demo-vendor-a",
+  "vendor": "approved-vendor-a",
   "amountCents": 124000,
   "policyVersion": "procurement-v1"
 }
 ```
 
-Denied fixture:
+Denied validation vector:
 
 ```json
 {
   "taskId": "verify-denied",
   "agent": "procurement.<configured-parent-name>",
   "capability": "procurement.purchase",
-  "vendor": "demo-vendor-a",
+  "vendor": "approved-vendor-a",
   "amountCents": 470000,
   "policyVersion": "procurement-v1"
 }
@@ -122,9 +122,25 @@ Set `CRE_WORKFLOW_URL` to the official workflow HTTP endpoint and use:
 npm run verify:chainlink
 ```
 
-`scripts/verify-chainlink.ts` validates both sanitized outcomes against the same strict shared schema used by the NestJS adapter. It never substitutes a local result for CRE evidence.
+`scripts/verify-chainlink.ts` validates both sanitized outcomes against the same strict shared schema used by the NestJS adapter. It never substitutes an in-process evaluation for CRE evidence.
 
-For a deployed HTTP trigger, add the authorized EVM key to workflow configuration before deployment. The staging config intentionally omits it because official local simulation accepts an empty trigger config. Do not deploy that simulation configuration. Confidential Workflow access is currently private beta and must be enabled for the owner's CRE organization.
+For a deployed HTTP trigger, add the authorized EVM key to workflow configuration before deployment. The simulation target intentionally omits it because the CLI accepts an empty trigger configuration. Do not deploy the simulation target.
+
+## Adapter contract
+
+The NestJS application calls `ConfidentialPolicyProvider.evaluate` with only the public proposal fields required for a decision. `ChainlinkCrePolicyProvider` applies a timeout, requires a successful HTTP response, parses the result with the shared strict schema, and fails closed on malformed data or unavailable infrastructure.
+
+The provider response may contain only:
+
+- `approved`;
+- `policyVersion`;
+- `reasonCode`.
+
+Extra fields are rejected to prevent accidental disclosure. The API maps every private rule failure to the same `POLICY_DENIED` response.
+
+## Capability separation
+
+Procurement and research use different policy schemas and secret references. The capability selected by the validated planner determines which secret the confidential handler reads. A caller cannot choose a secret reference directly, and an ENS-derived policy version must match the evaluated policy.
 
 ## Evidence checklist
 

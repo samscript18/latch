@@ -1,4 +1,4 @@
-# Bazantic Best Recipe integration
+# Bazantic Recipe orchestration
 
 Bazantic remains the orchestration and execution path for Procurement Agents.
 Research Agents use the same immutable LATCH authorization boundary and call
@@ -6,7 +6,7 @@ Tavily only after ENS and policy approval. A Bazantic Recipe may invoke the
 authenticated LATCH task flow for research without changing the published
 procurement proposal contract.
 
-Bazantic is the top-level orchestrator for the bounty path. LATCH does not call
+Bazantic is the top-level orchestrator for procurement Recipes. LATCH does not call
 the Recipe. The Recipe combines a real catalog service with the authenticated
 LATCH Gateway and continues to execution only after LATCH approves the exact
 catalog-derived proposal.
@@ -49,10 +49,9 @@ supply an approval result, ENS role, wallet, policy version, or confidential
 policy details. LATCH calculates the total, persists the proposal, hashes its
 immutable fields, and permits one authorization decision.
 
-Set `CAPABILITY_PROVIDER=recipe` for this path. In this mode, direct LATCH
-catalog search and execution throw an error; this prevents a recursive
-`LATCH -> Bazantic -> LATCH` flow and prevents local fixtures from becoming a
-hackathon execution path.
+Set `CAPABILITY_PROVIDER=recipe` for this path. The Recipe calls LATCH; LATCH
+does not invoke that same Recipe. This prevents a recursive
+`LATCH -> Bazantic -> LATCH` flow and keeps orchestration ownership explicit.
 
 ## Recipe-facing API
 
@@ -119,7 +118,25 @@ POST /bazantic/proposals/{authorizationId}/executions
 LATCH rejects a mismatched digest or any proposal that is not authorized. The
 same execution reference is idempotent; a different second execution conflicts.
 A valid receipt creates the sanitized `ActionExecuted` audit event.
-x
+
+## Proposal integrity
+
+The proposal digest binds:
+
+- Recipe invocation ID;
+- normalized worker ENS name;
+- capability;
+- provider product ID and name;
+- vendor;
+- integer unit price and currency;
+- optional product URL;
+- quantity and calculated total.
+
+LATCH recalculates the total and never accepts an AI-generated price. Reusing
+an invocation ID with different content returns a conflict. Evaluation claims
+the proposal atomically, and completion accepts only the digest that LATCH
+authorized.
+
 ## Recipe instructions
 
 Create a Recipe named `LATCH AUTHORIZED PROCUREMENT` with these rules:
@@ -148,8 +165,45 @@ integration readiness; LATCH does not invoke it in Recipe mode. The Recipe
 must be able to reach the LATCH API through public HTTPS. Do not put secrets in
 the browser deployment or commit them.
 
-Enable `HACKATHON_MODE=true` only after Chainlink CRE is live and all Recipe
-configuration is present. Hackathon mode requires `CAPABILITY_PROVIDER=recipe`.
+Enable the strict integration profile only after Chainlink CRE is reachable
+and all Recipe configuration is present. The profile requires
+`CAPABILITY_PROVIDER=recipe`.
+
+## Integration procedure
+
+1. Publish the LATCH API on HTTPS and verify `/health` and `/docs-json` from an external network.
+2. Create an authenticated Bazantic Gateway named `LATCH Authorization API`.
+3. Import the generated OpenAPI document or define the three Recipe routes explicitly.
+4. Add a catalog service that returns stable product IDs, vendor IDs, integer prices, currency, and optional HTTP(S) product URLs.
+5. Create `LATCH AUTHORIZED PROCUREMENT` using the rules above.
+6. Map catalog output directly into `POST /bazantic/proposals`; never let the model rewrite price or vendor.
+7. Map LATCH’s approved proposal and digest into the execution service.
+8. Map the execution reference into `POST /bazantic/proposals/{authorizationId}/executions`.
+9. Configure the Gateway URL, Recipe ID, and bearer credential in the API environment.
+10. Execute allowed, denied, wrong-role, revoked, replay, and receipt-conflict checks.
+
+The Recipe must preserve LATCH’s `authorizationId` and `proposalDigest` exactly between steps. It must stop immediately on denial or infrastructure failure.
+
+## Catalog contract
+
+The catalog must provide stable equivalents of:
+
+```json
+{
+  "id": "provider-product-id",
+  "name": "Standard Office Monitor",
+  "vendor": "provider-vendor-id",
+  "unitPriceCents": 6200,
+  "currency": "USD",
+  "productUrl": "https://merchant.example/products/provider-product-id"
+}
+```
+
+If a provider returns decimal currency, the Recipe must convert it to integer cents deterministically before creating the proposal. Currency conversion, discounts, tax, shipping, and substitutions require explicit application contracts; they must not be inferred by the model.
+
+## Successful execution output
+
+After an approved receipt, `GET /tasks/{taskId}` returns the purchased product as execution output with quantity, unit price, calculated total, vendor, source, external product URL, and opaque execution reference. The UI renders this output on Try Now and task-detail screens.
 
 ## Validation and evidence
 

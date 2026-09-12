@@ -1,312 +1,253 @@
-# ENSv2 integration
+# ENSv2 identity and authority
 
-LATCH reads agent identity from ENSv2 on Sepolia for every authorization attempt. MongoDB snapshots are display caches only and never authorize an action.
+ENSv2 is LATCH’s authoritative identity layer. Every authorization attempt resolves the worker from Sepolia and validates organization-controlled records before confidential policy evaluation begins. MongoDB snapshots support indexing and presentation only.
 
-## Resolution path
+## Identity record contract
 
-The API normalizes the requested name and queries the ENSv2 managed universal resolver proxy. It resolves the address, active resolver, and these organization-controlled text records in parallel:
+Each worker name resolves an address and these text records:
 
-- `latch.organization`
-- `latch.role`
-- `latch.status`
-- `latch.capabilities`
-- `latch.policyVersion`
+| Record                | Meaning                                  | Required      |
+| --------------------- | ---------------------------------------- | ------------- |
+| Address               | Wallet bound to the worker identity      | Yes           |
+| `latch.organization`  | Parent organization namespace            | Yes           |
+| `latch.role`          | LATCH business role                      | Yes           |
+| `latch.status`        | `active` or `revoked`                    | Yes           |
+| `latch.capabilities`  | Comma-separated capability allowlist     | Yes           |
+| `latch.policyVersion` | Confidential policy version selector     | Yes           |
+| `latch.agentVersion`  | Worker metadata version                  | Optional      |
+| `latch.profile`       | Harmless worker-managed profile metadata | Optional      |
+| `latch.revokedAt`     | Public revocation timestamp              | On revocation |
 
-The configured expected wallet and `DEMO_ORG_ENS` are compared against the fresh chain result. Unknown or malformed records fail closed. A role/status/capability failure returns before confidential policy evaluation.
+Procurement identity:
 
-ETHOnline 2026 uses a dedicated ENSv2 deployment that is separate from both
-legacy Sepolia ENS and the standard ENSv2 beta deployment. Its hackathon
-`UpgradableUniversalResolverProxy` is
-`0xd26f2040d083af1cd2962ba303f4bea0c4faf142`. The address is centralized in
-`ENSV2_UNIVERSAL_RESOLVER_ADDRESS`, and both API and browser viem chain
-configurations explicitly override `ensUniversalResolver`; viem's built-in
-Sepolia address resolves against the wrong deployment.
+```text
+procurement.<organization-parent>
+latch.organization=<organization-parent>
+latch.role=procurement
+latch.status=active
+latch.capabilities=procurement.purchase
+latch.policyVersion=procurement-v1
+```
 
-Authoritative hackathon resources:
+Research identity:
 
-- [deployment addresses and viem override](https://feature-permres-inode-refact.docs-bao.pages.dev/learn/deployments#sepolia-ensv2-beta)
-- [ENSv2 hackathon documentation](https://feature-permres-inode-refact.docs-bao.pages.dev/ensv2/overview)
-- [hackathon ENS App](https://hackathon-deployment-manager-app-v4.ens-cf.workers.dev/)
-- [hackathon ENS Explorer](https://hackathon-deployment-portal-app.ens-cf.workers.dev/)
+```text
+research.<organization-parent>
+latch.organization=<organization-parent>
+latch.role=research
+latch.status=active
+latch.capabilities=research.search
+latch.policyVersion=research-v1
+```
 
-## End-to-end Sepolia setup
+Business roles are LATCH metadata, not ENS Enhanced Access Control roles. ENS EAC roles govern who may change registry and resolver state.
 
-Perform this setup only on Sepolia and only through the dedicated
-[ETHOnline hackathon ENS App](https://hackathon-deployment-manager-app-v4.ens-cf.workers.dev/).
-Do not use `app.ens.dev`, `app.ens.domains`, or their displayed deployment
-addresses for this project.
+## Authorization algorithm
 
-### 1. Prepare the organization wallet
+For each proposed action, LATCH:
 
-Use the address in `ADMIN_WALLET_ADDRESS` as the organization owner and ENS
-administrator. The same address currently signs LATCH's Sepolia setup
-transactions. Keep `SEPOLIA_DEPLOYER_PRIVATE_KEY` local and never paste it into
-documentation, screenshots, issues, or chat.
+1. normalizes the worker ENS name;
+2. resolves the address, active resolver, and LATCH text records;
+3. binds the response to the resolution block;
+4. requires a nonzero address;
+5. compares the resolved address with the indexed worker wallet;
+6. compares `latch.organization` with the task organization namespace;
+7. requires `latch.status=active`;
+8. derives the required role from the capability registry;
+9. compares the ENS role with the required role;
+10. requires the requested capability in `latch.capabilities`;
+11. requires a policy version;
+12. passes only the authorized public proposal and ENS-derived policy version to CRE.
 
-In a browser wallet:
+Any missing, malformed, mismatched, unavailable, or revoked value stops the request before CRE.
 
-1. Add or select Ethereum Sepolia (`11155111`).
-2. Import the dedicated project account from the local `.env` if it is not
-   already available in the wallet.
-3. Confirm that the visible address exactly matches `ADMIN_WALLET_ADDRESS`.
-4. Keep enough Sepolia ETH for parent registration, resolver/subregistry
-   setup, two children, record writes, permission tests, and revocation.
+## Dedicated Sepolia deployment
+
+ETHOnline 2026 uses a dedicated ENSv2 Sepolia deployment separate from legacy Sepolia ENS and other ENSv2 environments. The configured `UpgradableUniversalResolverProxy` is:
+
+```text
+0xd26f2040d083af1cd2962ba303f4bea0c4faf142
+```
+
+LATCH centralizes this address in `ENSV2_UNIVERSAL_RESOLVER_ADDRESS`. Both API and browser viem chain configuration override `ensUniversalResolver`; viem’s built-in Sepolia resolver targets a different deployment.
+
+Authoritative resources:
+
+- [Deployment addresses and viem override](https://feature-permres-inode-refact.docs-bao.pages.dev/learn/deployments#sepolia-ensv2-beta)
+- [ENSv2 overview](https://feature-permres-inode-refact.docs-bao.pages.dev/ensv2/overview)
+- [ENS registration application](https://hackathon-deployment-manager-app-v4.ens-cf.workers.dev/)
+- [ENS Explorer](https://hackathon-deployment-portal-app.ens-cf.workers.dev/)
+
+Do not use `app.ens.dev`, `app.ens.domains`, or an address from another deployment.
+
+## Provisioning sequence
+
+### 1. Prepare the organization controller
+
+Use the configured admin address as the namespace owner, registry administrator, and protected-record controller. The script signer must resolve to the same address.
+
+Before broadcasting:
+
+- select Ethereum Sepolia (`11155111`);
+- confirm the wallet address exactly;
+- fund registration, resolver, subregistry, worker, record, permission, and revocation transactions;
+- keep the signer key outside browser configuration and source control.
 
 ### 2. Register the parent namespace
 
-1. Open the [hackathon ENS App](https://hackathon-deployment-manager-app-v4.ens-cf.workers.dev/)
-   and verify that the connected wallet is on Sepolia.
-2. Search for a unique parent label. Do not assume `acme.eth` is available.
-3. Register the name to the organization/admin wallet.
-4. Complete every confirmation and wait for final receipts.
-5. Open the registered name and ensure the owner/controller is the admin
-   wallet.
-6. Deploy or select the ENSv2 Owned/Permissioned Resolver offered by the app.
-7. Enable a subregistry for the parent so it can issue ENSv2 child names.
+Register a unique `.eth` name in the dedicated registration application, wait for final receipts, and confirm ownership in the Explorer. Configure an organization-controlled Permissioned Resolver and a subregistry capable of issuing worker children.
 
-The value written to `DEMO_ORG_ENS` is the complete normalized name, for
-example `latch-acme-2026.eth`, without a URL or trailing dot.
-
-#### Direct-contract fallback
-
-If the hackathon app's relayer cannot confirm its commit transaction, use the
-repository's direct EOA flow. It targets only the ETHOnline deployment's
-`ETHRegistrar` and open-mint `MockUSDC`, stores the commitment secret in an
-ignored mode-0600 evidence file, and never prints it:
+If the registration relayer cannot complete the commitment flow, use the repository’s direct registrar script:
 
 ```bash
-# Read-only availability, price, balance, and commitment-window check
-npm run ens:register -- --label=latchsecurity
+# Inspect availability, price, balance, and commitment window
+npm run ens:register -- --label=<unique-label>
 
-# Mint MockUSDC if needed, approve the exact fee, and commit
-npm run ens:register -- --label=latchsecurity --execute
+# Mint test payment token when required, approve the fee, and commit
+npm run ens:register -- --label=<unique-label> --execute
 
-# After the reported minimum age (currently 60 seconds), register
-npm run ens:register -- --label=latchsecurity --register
+# After the reported minimum commitment age, register
+npm run ens:register -- --label=<unique-label> --register
 ```
 
-The flow initially uses zero addresses for subregistry and resolver as allowed
-by the registrar. Configure both deliberately after registration and before
-creating the two agent identities. Do not remove
-`evidence/ens/registration.secret.json` between commit and register.
+The script stores the commitment secret in an ignored mode-0600 evidence file and never prints it. Preserve that file between commitment and registration.
 
-Attach the organization-controlled infrastructure using the official
-Verifiable Factory flow:
+### 3. Attach resolver and subregistry infrastructure
 
 ```bash
-# Inspect the parent without writing
 npm run ens:setup
-
-# Deploy one Permissioned Resolver and one User Registry proxy, then attach them
 npm run ens:setup -- --execute
 ```
 
-The script derives the official version-zero salts, grants the admin all root
-roles and their admin counterparts, waits for every receipt, and verifies both
-parent pointers after writing. Re-running it is read-only once both pointers
-are nonzero.
+The preview is read-only. The execution form deploys the verified Permissioned Resolver and User Registry proxies, derives the required version-zero salts, grants the organization administrator root roles and their admin roles, attaches both pointers, waits for receipts, and verifies read-after-write state.
 
-### 3. Create organization-controlled agent identities
+Re-running the command is idempotent once the pointers are configured.
 
-Create these children in the parent's subregistry:
-
-```text
-procurement.<parent>
-research.<parent>
-```
-
-The organization/admin must retain ownership and administrative resolver
-roles for both children. Do **not** transfer the ENS names to the agent
-wallets. The address records will point to the agent wallets, while the
-organization keeps authority over role, status, capability, and policy
-records.
-
-For each child:
-
-1. Create the child from the parent/subnames screen.
-2. Set the child owner/controller to `ADMIN_WALLET_ADDRESS`.
-3. Assign an ENSv2 Permissioned Resolver controlled by the admin.
-4. Wait for confirmation.
-5. Confirm the child appears in the [hackathon ENS Explorer](https://hackathon-deployment-portal-app.ens-cf.workers.dev/)
-   and has a nonzero resolver.
-
-The same organization-controlled setup can be performed directly and
-idempotently from the repository:
+### 4. Create worker identities
 
 ```bash
 npm run ens:create-agents
 npm run ens:create-agents -- --execute
 ```
 
-The script registers only the two configured direct children, keeps ownership
-with the organization admin, reuses the admin's verified Permissioned Resolver,
-and caps child expiry at the parent expiry.
+The organization retains ownership of worker names. Address records point to worker wallets; protected metadata remains controlled by the organization. The script creates only configured direct children, reuses verified resolver infrastructure, limits child expiry to parent expiry, and verifies final state.
 
-Use this mapping:
+Do not transfer worker names to worker wallets. A worker must not be able to promote itself, reactivate itself, change organization, add capabilities, or select a different policy.
 
-| Child                  | Address record                  | Protected role | Protected capability   |
-| ---------------------- | ------------------------------- | -------------- | ---------------------- |
-| `procurement.<parent>` | `DEMO_PROCUREMENT_AGENT_WALLET` | `procurement`  | `procurement.purchase` |
-| `research.<parent>`    | `DEMO_RESEARCH_AGENT_WALLET`    | `research`     | `research.search`      |
+### 5. Write protected identity records
 
-Do not manually place a spending threshold, vendor allowlist, or other private
-policy value in ENS.
-
-### 4. Complete the environment
-
-Set only the names after the parent and children exist:
-
-```dotenv
-DEMO_ORG_ENS=<registered-parent>
-DEMO_PROCUREMENT_AGENT_ENS=procurement.<registered-parent>
-DEMO_RESEARCH_AGENT_ENS=research.<registered-parent>
-```
-
-The admin and two agent wallet addresses are already generated. Do not replace
-one address without also updating its corresponding local-only private key and
-re-running all identity checks.
-
-### 5. Preview and execute protected records
-
-First run the non-writing preview:
+Preview:
 
 ```bash
 npm run ens:prepare
 ```
 
-The preview must show both child names, their actual resolver addresses, the
-planned wallet, role, capability, and policy version. Stop if a resolver is
-missing or unexpected.
-
-Then execute:
+Broadcast and verify:
 
 ```bash
 npm run ens:prepare -- --execute
 ```
 
-For each child this sends confirmed Permissioned Resolver transactions that:
+For each worker, the command:
 
-1. set the address record;
-2. set `latch.role`;
-3. set `latch.status=active`;
-4. set `latch.capabilities`;
-5. set `latch.organization`;
-6. set `latch.policyVersion`;
-7. delegate only the harmless `latch.profile` text permission to the agent;
-8. resolve the identity again and fail if read-after-write does not match.
+1. discovers the active resolver;
+2. verifies the signer’s required roles;
+3. writes the address record;
+4. writes organization, role, active status, capabilities, and policy version;
+5. delegates only `latch.profile` to the worker;
+6. waits for each receipt;
+7. resolves through the configured Universal Resolver;
+8. aborts if read-after-write state differs.
 
-### 6. Verify the live identity
+Never write confidential thresholds, vendor lists, domain rules, secrets, or credentials into ENS.
 
-Start the API and run:
+## Enhanced Access Control boundary
 
-```bash
-npm run verify:ens
+The organization controls:
+
+```text
+latch.organization
+latch.role
+latch.status
+latch.capabilities
+latch.policyVersion
+latch.revokedAt
 ```
 
-Also inspect the endpoints directly:
+The worker may receive record-specific permission for:
 
-```bash
-curl http://localhost:4000/ens/procurement.<registered-parent>
-curl http://localhost:4000/ens/research.<registered-parent>
+```text
+latch.profile
 ```
 
-Evidence must include the resolver, resolved wallet, public LATCH records,
-verification block, and transaction hashes. Never capture `.env`.
+LATCH uses the Permissioned Resolver’s current argument-scoped setter-role interface. Workers use isolated resolvers because the relevant permission is scoped across a resolver rather than safely isolated by name. Generic broad grants are not used.
 
-### 7. Demonstrate the permission boundary
-
-Using the dedicated procurement agent key, update only `latch.profile`; it
-must succeed. Using the same signer, attempt to change `latch.role`; simulation
-or execution must revert. Then verify that the admin can still update the
-protected records. Save both outcomes under `evidence/ens/` without storing
-private keys or signed raw transactions.
-
-The repository automates the non-destructive proof for both configured agents:
+Verify the boundary:
 
 ```bash
-# Simulate the allowed and denied calls without writing
+# Simulate the allowed profile write and forbidden protected write
 npm run ens:verify-permissions
 
-# Broadcast only the harmless profile writes; protected writes remain simulation-only
+# Broadcast only the harmless profile write
 npm run ens:verify-permissions -- --execute
 ```
 
-If either agent has no Sepolia ETH for gas, the idempotent project-wallet
-funding helper tops it up to `0.001` testnet ETH:
+The protected-role attempt remains simulation-only and must revert. If worker wallets need transaction gas, fund them with:
 
 ```bash
 npm run ens:fund-agents
 ```
 
-### 8. Demonstrate revocation last
+## Revocation
 
-Run the successful and policy-denied demos before revocation. Revocation is a
-real state change and the default flow intentionally preserves the name:
+Revocation preserves historical identity while removing future authority:
 
-1. authenticate the admin wallet in the LATCH UI;
+1. authenticate the organization wallet;
 2. select **Revoke Agent**;
-3. confirm the Sepolia transaction;
-4. wait for the receipt and fresh ENS resolution;
-5. verify `latch.status=revoked`;
-6. run that a new task stops at ENS and never invokes CRE or Bazantic.
+3. confirm the target name and wallet;
+4. write `latch.status=revoked`;
+5. write `latch.revokedAt` when supported;
+6. remove delegated `latch.profile` permission;
+7. wait for receipts;
+8. invalidate cached identity queries;
+9. resolve the identity again;
+10. require the UI to display `REVOKED` from fresh ENS state.
 
-Do not unregister the child. To repeat the active scenario after the demo,
-the admin must deliberately restore `latch.status=active` and, if required,
-re-grant the safe profile permission.
+Future tasks return `AGENT_REVOKED` before CRE or capability execution. Do not unregister the name: stable historical identity is part of the audit trail.
 
-### Troubleshooting checkpoints
-
-- **No resolver:** configure an ENSv2 Owned/Permissioned Resolver in the app;
-  the repository will not guess a resolver address.
-- **No subregistry:** enable the parent's subregistry before creating children.
-- **`EACUnauthorizedAccountRoles`:** the connected signer is not the admin or
-  the child was created with the wrong owner/role assignment.
-- **Address resolves but records are empty:** the child points at a resolver
-  that was not initialized for that name.
-- **Name works elsewhere but is unresolved in LATCH:** confirm it was created
-  in the dedicated hackathon ENS App. Names from another ENS deployment are
-  not interchangeable even though they share Sepolia.
-- **Stale result:** verify through the hackathon Universal Resolver and wait
-  for the transaction receipt; never authorize from the MongoDB snapshot.
-
-## Record ownership
-
-The organization retains control of `latch.organization`, `latch.role`, `latch.status`, `latch.capabilities`, and `latch.policyVersion`. The implemented write path can delegate only the harmless `latch.profile` key through the exact current Permissioned Resolver EAC interface. No write ABI is guessed in the read path.
-
-The implemented admin path uses the hackathon resolver's current
-`grantSetterRoles` interface and delegates only `latch.profile`. Each agent has
-an isolated resolver because setter permissions are argument-scoped across a
-resolver rather than name-scoped. Generic role grants are deliberately not used
-because the Permissioned Resolver disables them. Revocation atomically writes
-`latch.status=revoked`, records `latch.revokedAt`, removes the profile
-permission, waits for confirmation, and verifies the status through a fresh
-ENS read.
-
-## Preparing existing ENSv2 child identities
-
-After configuring the parent, agent names, wallets, RPC, admin address, and signer key, preview the operation:
+## Verification
 
 ```bash
-npm run ens:prepare
+npm run verify:ens
 ```
 
-Execute the verified writes explicitly:
+The verifier requires real configured names and an RPC endpoint. Evidence should include:
+
+- normalized worker name;
+- resolver address;
+- resolved wallet;
+- public LATCH records;
+- resolution block;
+- preparation and permission transaction hashes.
+
+Direct inspection is also available through:
 
 ```bash
-npm run ens:prepare -- --execute
+curl http://localhost:4000/ens/procurement.<organization-parent>
+curl http://localhost:4000/ens/research.<organization-parent>
 ```
 
-The script aborts if a child has no active resolver or if the signer lacks the
-necessary Permissioned Resolver roles. Parent infrastructure and child creation
-are handled separately by `ens:setup` and `ens:create-agents`, with read-only
-previews and receipt verification before record preparation.
+## Troubleshooting
 
-## Local verification
+| Symptom                                  | Check                                                                  |
+| ---------------------------------------- | ---------------------------------------------------------------------- |
+| Resolver is zero                         | Attach the deployment’s Permissioned Resolver                          |
+| Parent cannot create children            | Enable and attach its subregistry                                      |
+| `EACUnauthorizedAccountRoles`            | Confirm signer, name ownership, and resolver roles                     |
+| Address resolves but records are empty   | Confirm the child uses the initialized resolver                        |
+| Name resolves elsewhere but not in LATCH | Confirm it exists in the dedicated deployment                          |
+| Stale status after a write               | Wait for receipt and resolve through the configured Universal Resolver |
+| Wallet mismatch                          | Compare the address record with the indexed worker wallet              |
+| CRE is unexpectedly not reached          | Inspect ENS denial code first; this is expected on identity failure    |
 
-Set `SEPOLIA_RPC_URL`, `DEMO_ORG_ENS`, and real configured agent names, then start the API and request:
-
-```bash
-curl http://localhost:4000/ens/procurement.your-parent.eth
-```
-
-The response includes the block number used for the fresh resolution. An unresolved name or unavailable RPC never grants authority.
+Never authorize from a cached snapshot when RPC or resolution is unavailable.

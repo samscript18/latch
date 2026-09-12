@@ -33,11 +33,13 @@
 		"ens:prepare": "tsx --tsconfig scripts/tsconfig.json --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/prepare-ens-agents.ts",
 		"ens:register": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/register-ens-name.ts",
 		"seed:demo": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/seed-demo.ts",
+		"seed:workspace": "npm run seed:demo",
 		"verify:ens": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/verify-ens.ts",
 		"verify:chainlink": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/verify-chainlink.ts",
 		"verify:audit": "tsx --tsconfig scripts/tsconfig.json --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/verify-audit.ts",
 		"cre:simulate": "npm run simulate --workspace=@latch/cre-workflow",
-		"verify:demo": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/verify-demo.ts"
+		"verify:demo": "tsx --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/verify-demo.ts",
+		"verify:e2e": "npm run verify:demo"
 	},
 	"devDependencies": {
 		"@eslint/js": "9.39.1",

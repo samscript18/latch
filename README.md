@@ -1,141 +1,123 @@
 # LATCH
 
-LATCH is an authorization and confidential-policy layer for autonomous AI workers. It gives each agent a verifiable ENSv2 identity, checks organization-owned role and status records, evaluates action-specific policy through Chainlink CRE Confidential Workflows, and executes approved capabilities through Bazantic.
+LATCH is an identity, authorization, and confidential-policy layer for autonomous AI workers. It gives every worker an organization-controlled ENSv2 identity, verifies its authority from fresh onchain records, evaluates each proposed action inside a Chainlink CRE Confidential Workflow, and releases approved execution through Bazantic-connected services.
 
-This repository is under active phased implementation. Local providers are development-only and are rejected when `HACKATHON_MODE=true`; they must never be presented as sponsor integration evidence.
+> Tool access is not authority. LATCH lets an AI worker use a capability only when its identity, organizational role, current status, assigned capability, and action-specific policy all agree.
 
-## Problem
+## Security guarantees
 
-Tool access is not authority. Giving an autonomous worker a wallet or API key does not mean every use of that tool should be permitted.
+- **Onchain identity is authoritative.** MongoDB snapshots support presentation and indexing; they never authorize an action.
+- **Policies remain confidential.** Thresholds, allowlists, and private decision detail stay inside the CRE confidential handler.
+- **Execution cannot bypass authorization.** Capability providers are reachable only through the task or authenticated Recipe orchestration services.
+- **Every proposal is immutable and single-use.** Replays and modified execution receipts are rejected.
+- **Failures deny authority.** Resolution, policy, provider, audit, and schema failures stop execution.
+- **Revocation is immediate at the authorization boundary.** A revoked ENS identity is rejected before policy evaluation or tool invocation.
 
-## Solution
-
-LATCH treats an AI agent as a digital employee: an organization assigns an identity, business role, status, and capability through ENS records; a confidential workflow decides whether the particular proposed action follows private policy; only then can an approved Bazantic capability execute.
-
-## How it works
+## Decision flow
 
 ```text
-Prompt -> validated plan -> provider price -> onchain request audit
-       -> fresh ENSv2 authorization -> Chainlink confidential policy
-       -> onchain authorization audit -> Bazantic execution -> onchain execution audit
+User request
+    |
+    v
+Schema-validated intent planning
+    |
+    v
+Allowlisted capability + provider-owned data
+    |
+    v
+Fresh ENSv2 identity authorization
+    |-- unresolved / wrong wallet / wrong role / revoked --> DENY
+    v
+Chainlink CRE confidential policy
+    |-- policy violation / unavailable workflow ----------> DENY
+    v
+Bazantic-orchestrated capability execution
+    |
+    v
+Persistent activity + LatchAudit events + execution output
 ```
 
-The planner cannot set roles or verdicts, MongoDB snapshots cannot authorize, and public routes cannot invoke a capability directly. A task version and authorization ID are single-use.
+The language model proposes structured intent. It cannot set a role, authorization result, provider price, policy verdict, or confidential policy value.
 
-## Architecture
+## Supported workers
 
-The backend owns one non-bypassable sequence: validated planning, allowlisted capability selection, provider-sourced pricing, fresh ENS authorization, confidential policy evaluation, exact-action capability execution, and sanitized activity recording. See [the architecture and confidentiality boundary](docs/ARCHITECTURE.md).
+| Worker      | ENS business role | Capability             | Execution output                                                          |
+| ----------- | ----------------- | ---------------------- | ------------------------------------------------------------------------- |
+| Procurement | `procurement`     | `procurement.purchase` | Product, quantity, provider price, total, vendor, product URL, receipt    |
+| Research    | `research`        | `research.search`      | Ranked source links, excerpts, query metadata, provider request reference |
 
-## Sponsor integrations
+Both capabilities use the same ENS-first and policy-second authorization boundary.
 
-### ENSv2
+## System components
 
-ENSv2 is the source of truth for the agent wallet and the organization-owned `latch.organization`, `latch.role`, `latch.status`, `latch.capabilities`, and `latch.policyVersion` records. The write path uses the current Permissioned Resolver interface to delegate only `latch.profile`. Revocation preserves the name, writes `revoked`, removes that delegation, confirms the transaction, and re-resolves the identity.
+| Component           | Responsibility                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| Next.js application | Wallet session, organization onboarding, worker administration, task execution, evidence views    |
+| NestJS API          | Authentication, state transitions, authorization orchestration, provider adapters, persistence    |
+| MongoDB             | Organizations, indexed worker snapshots, tasks, proposals, execution receipts, sanitized activity |
+| ENSv2 on Sepolia    | Authoritative worker wallet, organization, role, status, capability, and policy version           |
+| Chainlink CRE       | Confidential evaluation of action-specific organization policy                                    |
+| Bazantic            | Multi-service Recipe orchestration and authorized procurement execution                           |
+| Tavily              | Authorized research search                                                                        |
+| `LatchAudit.sol`    | Minimal onchain lifecycle events using hashes and opaque references                               |
 
-### Chainlink Confidential Workflows
+## Workspace
 
-`ConfidentialPolicyProvider` is called only after ENS succeeds and returns a minimal approved/denied verdict. The application never returns thresholds, vendor rules, or confidential reasoning. `packages/cre-workflow` contains a real TypeScript CRE workflow whose HTTP callback is registered with `handlerInTee` and loads policy with `TeeRuntime.getSecret`; see [Chainlink notes](docs/CHAINLINK.md).
+The authenticated workspace is mounted at `/app`:
 
-### Bazantic
+| Route            | Purpose                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `/app`           | Organization posture, worker identities, integration health, and recent decisions     |
+| `/app/try`       | Execute a request through the complete LATCH pipeline                                 |
+| `/app/agents`    | Create, inspect, verify, and revoke AI workers                                        |
+| `/app/tasks`     | Browse task states and execution outcomes                                             |
+| `/app/tasks/:id` | Inspect the proposal, purchased products or research results, and authorization trail |
+| `/app/activity`  | Review public-safe authorization activity                                             |
+| `/app/settings`  | Manage organization profile and policy configuration                                  |
 
-Bazantic is the top-level bounty orchestrator: its Recipe calls a real catalog service, submits the immutable result to authenticated LATCH Gateway routes, executes only after approval, and reports the receipt for audit. `CAPABILITY_PROVIDER=recipe` disables direct LATCH search/execution so the final path cannot recurse or fall back to fixtures; see [Bazantic setup](docs/BAZANTIC.md).
+Administrative actions require wallet challenge authentication. The API issues a one-time nonce, verifies the wallet signature, and returns a short-lived opaque session token. Private keys never enter the application.
 
-## Demo scenarios
+## Prerequisites
 
-- Procurement agent + standard monitors: authorized and executed with live integrations.
-- Procurement agent + premium monitors: blocked by confidential policy.
-- Research agent + procurement request: blocked by ENS before policy.
-- Revoked procurement agent: blocked by ENS before policy.
+- Node.js 22.x and npm 11.x
+- MongoDB connection string
+- Ethereum Sepolia RPC endpoint
+- Organization-controlled ENSv2 namespace and worker names
+- Google Cloud API key for Gemini through Vertex AI
+- Chainlink CRE workflow endpoint and secret references
+- Bazantic Gateway/Recipe credentials
+- Tavily API key for research
+- Deployed `LatchAudit` contract and authorized recorder
 
-## Local setup
+## Install and configure
 
 ```bash
-cp .env.example .env
 npm install
-npm run seed:demo
-npm run build
-npm run dev
+cp .env.example .env.local
 ```
 
-The web app runs at `http://localhost:3000` and the API at `http://localhost:4000`; generated API documentation is at `http://localhost:4000/docs`. MongoDB defaults to `mongodb://127.0.0.1:27017/latch`. Start a locally installed MongoDB service before seeding or running the API, or set `MONGODB_URI` to an existing development database.
+Populate `.env.local` using [the configuration reference](docs/CONFIGURATION.md). Only variables prefixed with `NEXT_PUBLIC_` may be exposed to the browser. Wallet signer material, MongoDB credentials, RPC credentials, CRE references, and provider keys must remain server-side.
 
-The demo workspace is at `/demo`, its sanitized audit feed at `/demo/activity`, and runtime integration readiness at `/demo/integrations`. The status page only labels ENS connected after a live resolution and MongoDB connected from the active database connection; configured endpoints alone are not reported as successful calls.
-
-## Environment variables
-
-Copy `.env.example` to the repository root as `.env.local` (preferred) or `.env`. Both the API and web workspace load root configuration, with `.env.local` taking precedence. Browser-exposed values are limited to `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SEPOLIA_RPC_URL`. MongoDB, signer material, the Vertex AI key, CRE secret reference, Bazantic API key, and audit recorder address remain server-only. The Gemini planner is called through Vertex AI Express Mode, not the Gemini Developer API. `HACKATHON_MODE=true` rejects startup unless Gemini through Vertex AI, Chainlink, and Bazantic providers are selected, a deployed audit recorder is configured, and the required live endpoint/credential configuration is complete; it never silently falls back to local providers.
-
-## Running the apps
-
-```bash
-npm run dev
-# or independently
-npm run dev:api
-npm run dev:web
-```
-
-## Environment and integration preparation
-
-`.env.example` distinguishes browser-safe values from server-only RPC URLs, keys, signer material, CRE references, and Bazantic credentials. Never put secrets behind `NEXT_PUBLIC_`.
-
-Prepare existing ENSv2 child identities with a dry run, then opt into writes:
+Prepare ENS identities, synchronize the workspace index, and start both applications:
 
 ```bash
 npm run ens:prepare
 npm run ens:prepare -- --execute
+npm run seed:workspace
+npm run dev
 ```
 
-## Running CRE simulation
+Default workstation endpoints:
 
-Configure the current official CRE toolchain and confidential secret reference, then follow [the Chainlink simulation and evidence procedure](docs/CHAINLINK.md). `npm run verify:chainlink` checks the sanitized allowed and denied responses exposed by the configured workflow endpoint; it does not substitute a local result for CRE evidence.
+- Web application: `http://localhost:3000`
+- API: `http://localhost:4000`
+- OpenAPI UI: `http://localhost:4000/docs`
+- OpenAPI JSON: `http://localhost:4000/docs-json`
+- Health: `http://localhost:4000/health`
 
-## Bazantic setup
+## Verification
 
-Create the Gateway and Recipe in the currently available Bazantic dashboard, connect a real catalog service, and map the three authenticated proposal operations documented by LATCH. Exact schemas and anti-probing instructions are in [the Bazantic guide](docs/BAZANTIC.md).
-
-Run evidence checks after configuring live integrations:
-
-```bash
-npm run verify:ens
-npm run verify:chainlink
-npm run verify:audit
-npm run verify:demo
-```
-
-See the [demo runbook](docs/DEMO.md), [architecture](docs/ARCHITECTURE.md), and [testing guide](docs/TESTING.md).
-
-## Smart contract
-
-`packages/contracts` contains the small Foundry-based `LatchAudit` event recorder and deployment script. The backend records requested, authorized, blocked, and executed stages in transaction order and refuses to execute when a required audit write fails. Events contain hashes/opaque references, never private policy. `npm run verify:audit` verifies the deployment and recorder; add `-- --execute` to emit a sanitized requested/blocked smoke pair.
-
-## Project structure
-
-```text
-apps/web               Next.js dashboard and wallet admin flow
-apps/api               NestJS authorization and execution API
-packages/shared        Runtime schemas and domain types
-packages/contracts     Solidity audit recorder and Foundry tests
-packages/cre-workflow  Real secret-backed CRE TEE handler and tests
-scripts                ENS preparation, seed, and verification commands
-evidence               User-captured sponsor evidence locations
-```
-
-## Security and privacy model
-
-All external failures deny execution. Admin mutations require a one-time signed challenge and short-lived opaque session; only session hashes are stored. Prices come from the capability provider and totals are calculated server-side. Policy rules, keys, and confidential decision detail are excluded from MongoDB, browser state, public logs, and onchain events.
-
-## Known MVP limitations
-
-- Real ENS names, Sepolia funds, CRE access, and Bazantic dashboard configuration must be supplied by the project owner.
-- Chainlink Confidential Workflows are currently private beta; local simulation is available, while deployment requires owner access and secure HTTP-trigger authentication configuration.
-- The Research Agent executes `research.search` through Tavily only after ENS and policy authorization; cross-capability requests fail before policy or tool execution.
-- Final hosting and production deployment are outside this repository's scope.
-
-## Hackathon scope
-
-The MVP deliberately proves one procurement capability for one organization and two agents. It does not attempt general enterprise RBAC, cross-chain execution, human approvals, a marketplace, billing, or production deployment. The four acceptance paths are success, confidential-policy denial, wrong-role denial, and revoked-agent denial.
-
-## Running tests
+Run the repository gates:
 
 ```bash
 npm run lint
@@ -145,4 +127,42 @@ npm run build
 npm run contracts:test
 ```
 
-No production or hosted deployment is performed by repository scripts.
+Run integration verification after credentials and onchain identities are configured:
+
+```bash
+npm run verify:ens
+npm run verify:chainlink
+npm run verify:audit
+npm run verify:e2e
+```
+
+Each verification command fails closed. A configured URL is not considered a successful integration call; connected status requires a valid live response.
+
+## Repository map
+
+```text
+apps/web               Next.js operator application
+apps/api               NestJS authorization and execution API
+packages/shared        Domain types and strict runtime schemas
+packages/contracts     Foundry project for LatchAudit
+packages/cre-workflow  Chainlink CRE confidential workflow
+scripts                ENS, indexing, deployment, and verification commands
+docs                   Architecture and operator documentation
+evidence               Sanitized integration artifacts and transaction references
+```
+
+## Documentation
+
+- [Architecture and trust boundaries](docs/ARCHITECTURE.md)
+- [Configuration reference](docs/CONFIGURATION.md)
+- [HTTP API reference](docs/API.md)
+- [ENSv2 identity and revocation](docs/ENSV2.md)
+- [Chainlink confidential policy](docs/CHAINLINK.md)
+- [Bazantic Recipe orchestration](docs/BAZANTIC.md)
+- [Research capability](docs/RESEARCH.md)
+- [Operations runbook](docs/OPERATIONS.md)
+- [Testing and verification](docs/TESTING.md)
+
+## Deployment boundary
+
+Repository scripts prepare infrastructure and application artifacts but do not publish the web application, API, or database. Hosting is performed by the project owner. See [the operations runbook](docs/OPERATIONS.md) for build commands, readiness checks, secret handling, and post-deployment verification.
