@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api, type AgentView } from "../../../lib/api";
 import { useWalletSession } from "../../../components/wallet-session";
+import { AgentProvisioningAction } from "../../../components/agent-provisioning-action";
 
 export default function AgentsPage() {
   const session = useWalletSession();
@@ -61,12 +62,15 @@ export default function AgentsPage() {
                 </dd>
               </div>
             </dl>
-            <Link
-              className="text-link"
-              href={`/app/agents/${encodeURIComponent(agent.ensName)}`}
-            >
-              Inspect verified identity →
-            </Link>
+            <div className="directory-actions">
+              <Link
+                className="text-link"
+                href={`/app/agents/${encodeURIComponent(agent.ensName)}`}
+              >
+                Inspect identity →
+              </Link>
+              <AgentProvisioningAction agent={agent} />
+            </div>
           </article>
         ))}
       </section>

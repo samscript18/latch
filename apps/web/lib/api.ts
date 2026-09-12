@@ -17,6 +17,10 @@ export interface AgentView {
   displayName: string;
   ensName: string;
   expectedWallet: string;
+  intendedRole: "procurement" | "travel" | null;
+  intendedCapabilities: Array<"procurement.purchase" | "travel.booking">;
+  intendedPolicyVersion: string | null;
+  provisioningStatus: "pending_ens" | "verified";
   ensVerified: boolean;
   identity: EnsIdentity | null;
   lastEnsCheckedAt: string | null;

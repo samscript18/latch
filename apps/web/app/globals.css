@@ -1200,7 +1200,30 @@ dd {
 }
 .directory-card .text-link {
   display: inline-flex;
-  margin-top: 15px;
+}
+.directory-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+}
+.provision-action {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+.provision-action small {
+  max-width: 230px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: right;
+}
+.provision-action .field-error {
+  max-width: 300px;
+  margin: 0;
+  font-size: 10px;
+  text-align: right;
 }
 .onboarding-backdrop {
   z-index: 100;

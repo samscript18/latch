@@ -96,7 +96,21 @@ export class AgentsService {
     try {
       const identity = await this.ens.resolveAgent(agent.ensName);
       await this.saveSnapshot(agent, identity);
-      return this.serialize(agent, identity, true, recentActivity);
+      const verified = Boolean(
+        identity.wallet &&
+        identity.resolver &&
+        identity.role &&
+        identity.status &&
+        identity.organization &&
+        identity.policyVersion &&
+        identity.capabilities.length > 0 &&
+        identity.wallet.toLowerCase() === agent.wallet.toLowerCase(),
+      );
+      if (verified && agent.provisioningStatus !== "verified") {
+        agent.provisioningStatus = "verified";
+        await agent.save();
+      }
+      return this.serialize(agent, identity, verified, recentActivity);
     } catch {
       return this.serialize(agent, null, false, recentActivity);
     }
@@ -153,6 +167,12 @@ export class AgentsService {
       ensName: agent.ensName,
       expectedWallet: agent.wallet,
       organizationId: agent.organizationId.toString(),
+      intendedRole: agent.intendedRole ?? null,
+      intendedCapabilities: agent.intendedCapabilities ?? [],
+      intendedPolicyVersion: agent.intendedPolicyVersion ?? null,
+      provisioningStatus: ensVerified
+        ? "verified"
+        : (agent.provisioningStatus ?? "pending_ens"),
       ensVerified,
       identity: identity
         ? {
