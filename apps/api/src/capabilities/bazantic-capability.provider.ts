@@ -21,6 +21,11 @@ const productSchema = z
     vendor: z.string().trim().min(1).max(128),
     unitPriceCents: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     currency: z.literal("USD"),
+    productUrl: z
+      .string()
+      .url()
+      .refine((value) => /^https?:\/\//i.test(value), "Product URL must use HTTP(S)")
+      .optional(),
   })
   .strict();
 const searchResponseSchema = z

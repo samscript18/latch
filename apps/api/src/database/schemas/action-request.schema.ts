@@ -14,6 +14,7 @@ export class ActionRequest {
   @Prop({ min: 1, required: true, type: Number }) quantity!: number;
   @Prop({ required: true, type: String }) item!: string;
   @Prop({ type: String }) productId?: string;
+  @Prop({ type: String }) productUrl?: string;
   @Prop({ required: true, type: String }) vendor!: string;
   @Prop({ enum: ["USD"], type: String }) currency?: "USD";
   @Prop({

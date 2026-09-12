@@ -64,7 +64,8 @@ export default function TaskDetailPage() {
 
   const agent = session.profile?.organization?.agents.find((item) => item.id === task.data.task.agentId);
   const actionEntries = Object.entries(task.data.action ?? {}).filter(([key, value]) => key !== "results" && value !== undefined && value !== null);
-  const results = readResearchResults(task.data.action?.results);
+  const researchResults = readResearchResults(task.data.action?.results);
+  const procurementResults = readProcurementResults(task.data.action?.results);
 
   return (
     <main className="detail-shell app-page">
@@ -97,11 +98,20 @@ export default function TaskDetailPage() {
         </article>
       </section>
 
-      {results.length > 0 && (
+      {procurementResults.length > 0 && (
+        <section className="panel task-timeline">
+          <div className="section-heading"><div><p className="eyebrow">Execution output</p><h2>Purchased products</h2></div></div>
+          <div className="procurement-result-summary">
+            {procurementResults.map((product) => <article key={product.productId ?? product.name}><div><span className="product-quantity">{product.quantity}×</span><div><strong>{product.name}</strong><small>{product.vendor} · {humanize(product.source ?? "capability provider")}</small></div></div><dl><div><dt>Unit price</dt><dd>{formatMoney(product.unitPriceCents)}</dd></div><div><dt>Execution total</dt><dd>{formatMoney(product.totalAmountCents)}</dd></div></dl>{product.productUrl && <a href={product.productUrl} rel="noreferrer" target="_blank">View external product <span aria-hidden="true">↗</span></a>}</article>)}
+          </div>
+        </section>
+      )}
+
+      {researchResults.length > 0 && (
         <section className="panel task-timeline">
           <div className="section-heading"><div><p className="eyebrow">Execution output</p><h2>Research results</h2></div></div>
           <div className="research-result-summary">
-            {results.map((result) => <a href={result.url} key={result.url} rel="noreferrer" target="_blank"><strong>{result.title}</strong><span>{result.content}</span><code>{result.url}</code></a>)}
+            {researchResults.map((result) => <a href={result.url} key={result.url} rel="noreferrer" target="_blank"><strong>{result.title}</strong><span>{result.content}</span><code>{result.url}</code></a>)}
           </div>
         </section>
       )}
@@ -155,3 +165,12 @@ function readResearchResults(value: unknown): Array<{ title: string; url: string
     return typeof result.title === "string" && typeof result.url === "string" && typeof result.content === "string";
   });
 }
+function readProcurementResults(value: unknown): Array<{ productId?: string; name: string; vendor: string; productUrl?: string; quantity: number; unitPriceCents: number; totalAmountCents: number; source?: string }> {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is { productId?: string; name: string; vendor: string; productUrl?: string; quantity: number; unitPriceCents: number; totalAmountCents: number; source?: string } => {
+    if (!item || typeof item !== "object") return false;
+    const product = item as Record<string, unknown>;
+    return typeof product.name === "string" && typeof product.vendor === "string" && typeof product.quantity === "number" && typeof product.unitPriceCents === "number" && typeof product.totalAmountCents === "number" && (product.productId === undefined || typeof product.productId === "string") && (product.productUrl === undefined || typeof product.productUrl === "string") && (product.source === undefined || typeof product.source === "string");
+  });
+}
+function formatMoney(cents: number) { return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" }); }

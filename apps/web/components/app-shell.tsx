@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { LatchMark } from "./latch-logo";
 import { OnboardingModal } from "./onboarding-modal";
 import { useWalletSession } from "./wallet-session";
@@ -21,14 +21,28 @@ const shortAddress = (value?: string) => (value ? `${value.slice(0, 6)}…${valu
 export function AppShell({ children }: { children: ReactNode }) {
 	const pathname = usePathname();
 	const session = useWalletSession();
+	const [navigationOpen, setNavigationOpen] = useState(false);
+
+	useEffect(() => {
+		if (!navigationOpen) return;
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setNavigationOpen(false);
+		};
+		document.addEventListener("keydown", closeOnEscape);
+		return () => document.removeEventListener("keydown", closeOnEscape);
+	}, [navigationOpen]);
 
 	return (
 		<div className="app-frame">
-			<aside className="app-sidebar">
-				<Link className="sidebar-brand" href="/">
-					<LatchMark className="size-7 shrink-0" />
-					<span>LATCH</span>
-				</Link>
+			<button className={`mobile-sidebar-backdrop ${navigationOpen ? "visible" : ""}`} aria-label="Close navigation" onClick={() => setNavigationOpen(false)} tabIndex={navigationOpen ? 0 : -1} />
+			<aside className={`app-sidebar ${navigationOpen ? "mobile-open" : ""}`} id="app-navigation">
+				<div className="sidebar-header">
+					<Link className="sidebar-brand" href="/">
+						<LatchMark className="size-7 shrink-0" />
+						<span>LATCH</span>
+					</Link>
+					<button className="sidebar-close" aria-label="Close navigation" onClick={() => setNavigationOpen(false)}>×</button>
+				</div>
 
 				<div className="workspace-switcher">
 					<span>{session.profile?.organization?.name?.slice(0, 1) || "—"}</span>
@@ -43,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 					{navigation.map((item) => {
 						const active = item.href === "/app" ? pathname === item.href : pathname.startsWith(item.href);
 						return (
-							<Link className={active ? "active" : ""} href={item.href} key={item.href}>
+							<Link className={active ? "active" : ""} href={item.href} key={item.href} onClick={() => setNavigationOpen(false)} title={item.label}>
 								<span aria-hidden="true">{item.icon}</span>
 								<span>{item.label}</span>
 							</Link>
@@ -72,9 +86,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 			<div className="app-content">
 				<header className="app-topbar">
-					<div className="flex items-center text-xs text-muted font-mono">
-						<span className="environment-dot" />
-						<span>Sepolia Testnet Workspace</span>
+					<div className="app-topbar-context">
+						<button className="sidebar-menu-button" aria-controls="app-navigation" aria-expanded={navigationOpen} aria-label="Open navigation" onClick={() => setNavigationOpen(true)}><span /><span /><span /></button>
+						<div className="flex items-center text-xs text-muted font-mono">
+							<span className="environment-dot" />
+							<span>Sepolia Testnet Workspace</span>
+						</div>
 					</div>
 
 					{session.connected && session.token ? (

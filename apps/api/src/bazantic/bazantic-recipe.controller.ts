@@ -30,6 +30,11 @@ const proposalSchema = z
         vendor: z.string().trim().min(1).max(128),
         unitPriceCents: z.number().int().nonnegative().max(100_000_000),
         currency: z.literal("USD"),
+        productUrl: z
+          .string()
+          .url()
+          .refine((value) => /^https?:\/\//i.test(value))
+          .optional(),
       })
       .strict(),
     quantity: z.number().int().positive().max(10_000),
@@ -91,6 +96,7 @@ export class BazanticRecipeController {
             vendor: { type: "string" },
             unitPriceCents: { type: "integer", minimum: 0 },
             currency: { type: "string", enum: ["USD"] },
+            productUrl: { type: "string", format: "uri" },
           },
         },
         quantity: { type: "integer", minimum: 1 },

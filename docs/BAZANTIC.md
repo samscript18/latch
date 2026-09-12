@@ -73,7 +73,8 @@ POST /bazantic/proposals
     "name": "Standard Office Monitor",
     "vendor": "catalog-vendor-id",
     "unitPriceCents": 6200,
-    "currency": "USD"
+    "currency": "USD",
+    "productUrl": "https://merchant.example/products/catalog-product-id"
   },
   "quantity": 20
 }
@@ -81,6 +82,8 @@ POST /bazantic/proposals
 
 LATCH calculates `amountCents`, creates a single-use `authorizationId`, and
 returns a `proposalDigest`. Repeating the same Recipe invocation is idempotent.
+The optional HTTP(S) `productUrl` becomes part of the immutable proposal and is
+returned as a clickable product link in successful procurement task output.
 
 ### 2. Evaluate once
 

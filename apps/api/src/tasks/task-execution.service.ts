@@ -163,6 +163,7 @@ export class TaskExecutionService {
         quantity: plan.quantity,
         item: product.name,
         productId: product.id,
+        productUrl: product.productUrl,
         vendor: product.vendor,
         currency: product.currency,
         source:
@@ -762,6 +763,7 @@ export class TaskExecutionService {
             quantity: action.quantity,
             item: action.item,
             productId: action.productId,
+            productUrl: action.productUrl,
             vendor: action.vendor,
             currency: action.currency,
             source: action.source,
@@ -774,6 +776,24 @@ export class TaskExecutionService {
             publicDenialCode: action.publicDenialCode,
             executionReference: action.executionReference,
             transactionHash: action.transactionHash,
+            results:
+              action.status === "consumed"
+                ? [
+                    {
+                      productId: action.productId,
+                      name: action.item,
+                      vendor: action.vendor,
+                      productUrl: action.productUrl,
+                      quantity: action.quantity,
+                      unitPriceCents: Math.trunc(
+                        action.amountCents / action.quantity,
+                      ),
+                      totalAmountCents: action.amountCents,
+                      currency: action.currency ?? "USD",
+                      source: action.source,
+                    },
+                  ]
+                : [],
           }
         : null,
       succeeded,

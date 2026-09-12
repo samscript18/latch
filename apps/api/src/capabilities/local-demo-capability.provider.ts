@@ -13,6 +13,7 @@ const standardMonitor: ProductCandidate = {
   unitPriceCents: 6_200,
   currency: "USD",
   source: "local-fixture",
+  productUrl: "https://www.dell.com/en-us/shop/computer-monitors/ar/4009",
 };
 
 const premiumMonitor: ProductCandidate = {
@@ -22,6 +23,7 @@ const premiumMonitor: ProductCandidate = {
   unitPriceCents: 23_500,
   currency: "USD",
   source: "local-fixture",
+  productUrl: "https://www.dell.com/en-us/shop/computer-monitors/ar/4009",
 };
 
 @Injectable()

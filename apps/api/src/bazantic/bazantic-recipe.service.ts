@@ -36,6 +36,7 @@ interface CatalogProposal {
     vendor: string;
     unitPriceCents: number;
     currency: "USD";
+    productUrl?: string;
   };
   quantity: number;
 }
@@ -98,6 +99,7 @@ export class BazanticRecipeService {
       vendor: input.product.vendor,
       amountCents,
       productId: input.product.id,
+      productUrl: input.product.productUrl,
       currency: input.product.currency,
       source: "bazantic-recipe",
       proposalDigest,
@@ -346,6 +348,7 @@ export class BazanticRecipeService {
           input.product.vendor,
           input.product.unitPriceCents,
           input.product.currency,
+          input.product.productUrl ?? null,
           input.quantity,
           amountCents,
         ]),
@@ -362,6 +365,7 @@ export class BazanticRecipeService {
       proposal: {
         capability: action.actionType,
         productId: action.productId,
+        productUrl: action.productUrl,
         name: action.item,
         vendor: action.vendor,
         unitPriceCents: action.amountCents / action.quantity,

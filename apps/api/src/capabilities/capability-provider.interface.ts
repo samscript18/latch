@@ -7,6 +7,7 @@ export interface ProductCandidate {
   unitPriceCents: number;
   currency: "USD";
   source: "local-fixture" | "bazantic";
+  productUrl?: string;
 }
 
 export interface PurchaseInput {
