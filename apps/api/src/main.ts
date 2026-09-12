@@ -10,9 +10,17 @@ import type { Environment } from "./config/environment.js";
 async function bootstrap(): Promise<void> {
 	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
 	const config = app.get(ConfigService<Environment, true>);
+	const webOrigin = config.getOrThrow("WEB_ORIGIN", { infer: true });
 	app.enableCors({
 		credentials: true,
-		origin: config.get("WEB_ORIGIN", { infer: true }),
+		origin: [
+			webOrigin,
+			"https://bazantic.com",
+			/^https:\/\/([a-z0-9-]+\.)*bazantic\.com$/i,
+			/^https:\/\/([a-z0-9-]+\.)*bazgateway\.com$/i,
+		],
+		methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+		allowedHeaders: ["Authorization", "Content-Type"],
 	});
 	app.enableShutdownHooks();
 	app.useGlobalPipes(
