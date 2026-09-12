@@ -66,11 +66,6 @@ export class BazanticCapabilityProvider implements CapabilityProvider {
     this.url = config.get("BAZANTIC_GATEWAY_URL", { infer: true }) ?? "";
     this.recipeId = config.get("BAZANTIC_RECIPE_ID", { infer: true }) ?? "";
     this.apiKey = config.get("BAZANTIC_API_KEY", { infer: true }) ?? "";
-    if (!this.url || !this.recipeId || !this.apiKey) {
-      throw new ServiceUnavailableException(
-        "Bazantic Gateway configuration is incomplete",
-      );
-    }
   }
 
   async searchProducts(query: string): Promise<ProductCandidate[]> {
@@ -99,6 +94,11 @@ export class BazanticCapabilityProvider implements CapabilityProvider {
   }
 
   private async call(operation: string, input: unknown): Promise<unknown> {
+    if (!this.url || !this.recipeId || !this.apiKey) {
+      throw new ServiceUnavailableException(
+        "Bazantic Gateway configuration is incomplete",
+      );
+    }
     try {
       const response = await fetch(this.url, {
         method: "POST",

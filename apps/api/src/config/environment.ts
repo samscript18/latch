@@ -42,8 +42,11 @@ export const EnvironmentSchema = z
 		PLANNER_PROVIDER: z.enum(["local", "gemini"]).default("local"),
 		GOOGLE_CLOUD_API_KEY: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
 		GEMINI_MODEL: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
-		POLICY_PROVIDER: z.enum(["local", "chainlink"]).default("local"),
+		// `local` remains a backward-compatible alias for the organization-backed
+		// manual provider. New configurations should use the clearer `manual` name.
+		POLICY_PROVIDER: z.enum(["local", "manual", "chainlink"]).default("local"),
 		CAPABILITY_PROVIDER: z.enum(["local", "recipe"]).default("local"),
+		TRY_NOW_CAPABILITY_PROVIDER: z.enum(["local", "bazantic"]).default("local"),
 		CRE_ENVIRONMENT: z.string().optional(),
 		CRE_POLICY_SECRET_REFERENCE: z.string().optional(),
 		CRE_WORKFLOW_URL: optionalUrl,
