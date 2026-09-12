@@ -87,12 +87,12 @@ export default function PolicySettingsPage() {
 						<button type="button" className={`agent-type-option ${provider === "chainlink" ? "agent-type-option-selected" : ""}`} onClick={() => setProvider("chainlink")}>
 							<strong>Chainlink Confidential</strong>
 							<small>Rules remain in CRE secrets and only sanitized verdicts leave the TEE.</small>
-							<code>Production / hackathon</code>
+							<code>Production</code>
 						</button>
 						<button type="button" className={`agent-type-option ${provider === "manual" ? "agent-type-option-selected" : ""}`} onClick={() => setProvider("manual")}>
 							<strong>Manual</strong>
-							<small>Organization-specific rules stored for local development and transparent testing.</small>
-							<code>Development</code>
+							<small>Organization-specific rules stored for transparency.</small>
+							<code>Production</code>
 						</button>
 					</div>
 				</section>
