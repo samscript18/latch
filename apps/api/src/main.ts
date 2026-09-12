@@ -12,8 +12,7 @@ async function bootstrap(): Promise<void> {
 	const config = app.get(ConfigService<Environment, true>);
 	app.enableCors({
 		credentials: true,
-		// origin: config.get("WEB_ORIGIN", { infer: true }),
-		origin: "*",
+		origin: config.get("WEB_ORIGIN", { infer: true }),
 	});
 	app.enableShutdownHooks();
 	app.useGlobalPipes(
@@ -28,7 +27,7 @@ async function bootstrap(): Promise<void> {
 	SwaggerModule.setup("docs", app, SwaggerModule.createDocument(app, openApiConfig));
 
 	const port = config.get("PORT", { infer: true });
-	await app.listen(port);
+	await app.listen({ host: "0.0.0.0", port });
 	Logger.log(`LATCH API listening on http://localhost:${port}`, "Bootstrap");
 }
 

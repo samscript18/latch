@@ -12,13 +12,14 @@
 		"apps/web"
 	],
 	"engines": {
-		"node": ">=22.0.0"
+		"node": "22.x"
 	},
 	"scripts": {
 		"dev": "concurrently -n api,web -c blue,green \"npm run dev --workspace=@latch/api\" \"npm run dev --workspace=@latch/web\"",
 		"dev:api": "npm run dev --workspace=@latch/api",
 		"dev:web": "npm run dev --workspace=@latch/web",
 		"build": "npm run build --workspace=@latch/shared && npm run build --workspace=@latch/api && npm run build --workspace=@latch/web",
+		"build:api": "npm run build --workspace=@latch/shared && npm run build --workspace=@latch/api",
 		"lint": "eslint .",
 		"typecheck": "npm run build --workspace=@latch/shared && npm run typecheck --workspaces --if-present && tsc -p scripts/tsconfig.json --noEmit",
 		"test": "npm run test --workspaces --if-present",
