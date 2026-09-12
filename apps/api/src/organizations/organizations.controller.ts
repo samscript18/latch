@@ -60,6 +60,14 @@ const policySchema = z.discriminatedUnion("provider", [
     .strict(),
 ]);
 
+const profileSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100),
+    industry: z.string().trim().max(100),
+    website: z.union([z.literal(""), z.string().url().max(300)]),
+  })
+  .strict();
+
 @Controller("organization")
 export class OrganizationsController {
   constructor(
@@ -104,6 +112,22 @@ export class OrganizationsController {
       throw new BadRequestException("Invalid organization policy configuration");
     }
     return this.organizations.updatePolicy(
+      request.walletSession!.address,
+      parsed.data,
+    );
+  }
+
+  @Put("me/profile")
+  @UseGuards(WalletAuthGuard)
+  updateProfile(
+    @Req() request: WalletAuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    const parsed = profileSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid organization profile");
+    }
+    return this.organizations.updateProfile(
       request.walletSession!.address,
       parsed.data,
     );

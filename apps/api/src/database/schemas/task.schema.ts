@@ -33,6 +33,9 @@ export class Task {
   @Prop({ default: 1, min: 1, required: true, type: Number })
   actionVersion!: number;
 
+  @Prop({ index: true, type: Date })
+  deletedAt?: Date;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

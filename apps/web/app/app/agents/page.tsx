@@ -6,6 +6,7 @@ import { AgentProvisioningAction } from "../../../components/agent-provisioning-
 import { CreateAgentModal } from "../../../components/create-agent-modal";
 import { useWalletSession } from "../../../components/wallet-session";
 import { api, type AgentView } from "../../../lib/api";
+import { PageSkeleton } from "../../../components/loading-state";
 
 export default function AgentsPage() {
 	const session = useWalletSession();
@@ -17,6 +18,7 @@ export default function AgentsPage() {
 			}),
 		enabled: Boolean(session.token && session.profile?.complete),
 	});
+	if (agents.isPending) return <PageSkeleton cards={4} />;
 
 	return (
 		<main className="dashboard-shell app-page">

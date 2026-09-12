@@ -32,6 +32,7 @@ export class OrganizationsService {
 			this.tasks.countDocuments({
 				organizationId: organization._id,
 				status: { $in: activeStatuses },
+				deletedAt: { $exists: false },
 			}),
 			this.activities.countDocuments({
 				organizationId: organization._id,
@@ -154,6 +155,27 @@ export class OrganizationsService {
 		return this.getByOwner(ownerWallet);
 	}
 
+	async updateProfile(ownerWallet: Address, input: OrganizationProfileInput) {
+		const website = input.website.trim();
+		const industry = input.industry.trim();
+		const organization = await this.organizations.findOneAndUpdate(
+			{ ownerWallet: ownerWallet.toLowerCase() },
+			{
+				$set: {
+					name: input.name.trim(),
+					...(industry ? { industry } : {}),
+					...(website ? { website } : {}),
+				},
+				...(!industry || !website
+					? { $unset: { ...(!industry ? { industry: 1 } : {}), ...(!website ? { website: 1 } : {}) } }
+					: {}),
+			},
+			{ new: true },
+		);
+		if (!organization) throw new NotFoundException("Organization not found");
+		return this.getByOwner(ownerWallet);
+	}
+
 	private async saveForOwner(ownerWallet: Address, input: OrganizationInput, create: boolean) {
 		const normalizedOwner = ownerWallet.toLowerCase();
 		const ensName = this.normalizeEns(input.ensName);
@@ -244,6 +266,12 @@ interface OrganizationInput {
 		wallet: string;
 		type: "procurement" | "research";
 	}>;
+}
+
+interface OrganizationProfileInput {
+	name: string;
+	website: string;
+	industry: string;
 }
 
 type OrganizationPolicyInput =

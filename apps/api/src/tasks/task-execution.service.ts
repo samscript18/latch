@@ -566,6 +566,9 @@ export class TaskExecutionService {
         ensAuthorized: proposal.ensAuthorized,
         policyAuthorized: proposal.policyAuthorized,
         status: proposal.status,
+        proposalDigest: proposal.proposalDigest,
+        policyVersion: proposal.policyVersion,
+        publicDenialCode: proposal.publicDenialCode,
         executionReference: proposal.executionReference,
         results: proposal.results,
       },
@@ -581,7 +584,10 @@ export class TaskExecutionService {
           .distinct("_id")
       : undefined;
     const tasks = await this.tasks
-      .find(organizationIds ? { organizationId: { $in: organizationIds } } : {})
+      .find({
+        ...(organizationIds ? { organizationId: { $in: organizationIds } } : {}),
+        deletedAt: { $exists: false },
+      })
       .sort({ createdAt: -1 })
       .limit(100)
       .exec();
@@ -614,6 +620,27 @@ export class TaskExecutionService {
     );
   }
 
+  async remove(taskId: string, ownerWallet?: Address) {
+    await this.assertTaskOwner(taskId, ownerWallet);
+    const task = await this.tasks.findById(taskId).exec();
+    if (!task || task.deletedAt) throw new NotFoundException("Task not found");
+    const runningStatuses: TaskStatus[] = [
+      "planning",
+      "capability_resolved",
+      "ens_checking",
+      "ens_authorized",
+      "policy_checking",
+      "policy_authorized",
+      "executing",
+    ];
+    if (runningStatuses.includes(task.status)) {
+      throw new ConflictException("A task cannot be removed while it is running");
+    }
+    task.deletedAt = new Date();
+    await task.save();
+    return { deleted: true, id: task._id.toString() };
+  }
+
   async activity(taskId: string, ownerWallet?: Address) {
     await this.assertTaskOwner(taskId, ownerWallet);
     return this.activities
@@ -633,7 +660,10 @@ export class TaskExecutionService {
 
   private async assertTaskOwner(taskId: string, ownerWallet?: Address) {
     if (!ownerWallet) return;
-    const task = await this.tasks.findById(taskId).lean().exec();
+    const task = await this.tasks
+      .findOne({ _id: taskId, deletedAt: { $exists: false } })
+      .lean()
+      .exec();
     if (!task) throw new NotFoundException("Task not found");
     await this.assertOrganizationOwner(
       task.organizationId.toString(),
@@ -731,12 +761,19 @@ export class TaskExecutionService {
             actionType: action.actionType,
             quantity: action.quantity,
             item: action.item,
+            productId: action.productId,
             vendor: action.vendor,
+            currency: action.currency,
+            source: action.source,
             amountCents: action.amountCents,
             ensAuthorized: action.ensAuthorized,
             policyAuthorized: action.policyAuthorized,
             status: action.status,
+            proposalDigest: action.proposalDigest,
+            policyVersion: action.policyVersion,
+            publicDenialCode: action.publicDenialCode,
             executionReference: action.executionReference,
+            transactionHash: action.transactionHash,
           }
         : null,
       succeeded,

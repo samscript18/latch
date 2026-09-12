@@ -10,9 +10,9 @@ import { useWalletSession } from "./wallet-session";
 const navigation = [
 	{ href: "/app", label: "Overview", icon: "⌂" },
 	{ href: "/app/agents", label: "AI Workers", icon: "◇" },
+	{ href: "/app/tasks", label: "Tasks", icon: "✓" },
 	{ href: "/app/activity", label: "Activity Stream", icon: "≋" },
-	{ href: "/app/integrations", label: "Integrations", icon: "↗" },
-	{ href: "/app/settings", label: "Policy Settings", icon: "⚙" },
+	{ href: "/app/settings", label: "Settings", icon: "⚙" },
 ];
 
 const shortAddress = (value?: string) => (value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "Connect admin wallet");
@@ -93,7 +93,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 				{session.error && <div className="notice error mx-8 mt-4">{session.error}</div>}
 
-				{!session.token ? (
+				{session.connected && session.token && session.profileLoading ? (
+					<div className="app-session-loading" aria-label="Loading workspace">
+						<span className="skeleton skeleton-title" />
+						<span className="skeleton skeleton-copy" />
+					</div>
+				) : !session.token ? (
 					<section className="wallet-gate">
 						<span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#4efa94]">
 							<span className="size-1.5 rounded-full bg-[#4efa94]" />

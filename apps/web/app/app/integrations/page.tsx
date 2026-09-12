@@ -1,5 +1,5 @@
-import { IntegrationsView } from "../../../components/integrations-view";
+import { redirect } from "next/navigation";
 
 export default function IntegrationsPage() {
-  return <IntegrationsView />;
+  redirect("/app");
 }

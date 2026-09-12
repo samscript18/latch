@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { api, type AgentView } from "../lib/api";
+import { PageSkeleton } from "./loading-state";
 import { useWalletSession } from "./wallet-session";
 
 interface OrganizationView {
@@ -135,6 +136,7 @@ export function DemoDashboard() {
       return api<RunResult>(`/tasks/${task.id}/run`, {
         method: "POST",
         headers: { authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({}),
       });
     },
     onSuccess: async (result) => {
@@ -186,6 +188,10 @@ export function DemoDashboard() {
 
   const loadError = organization.error ?? agents.error ?? tasks.error;
   const metrics = organization.data?.metrics;
+
+  if (organization.isPending || agents.isPending || tasks.isPending) {
+    return <PageSkeleton cards={6} />;
+  }
 
   return (
     <main className="dashboard-shell">

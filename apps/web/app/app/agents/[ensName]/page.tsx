@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, type AgentView } from "../../../../lib/api";
 import { useWalletSession } from "../../../../components/wallet-session";
+import { PageSkeleton } from "../../../../components/loading-state";
 
 export default function AgentDetailPage() {
 	const params = useParams<{ ensName: string }>();
@@ -16,14 +17,13 @@ export default function AgentDetailPage() {
 	});
 	const policyProvider = session.profile?.organization?.policy.provider;
 	const identity = agent.data?.identity;
+	if (agent.isLoading) return <PageSkeleton cards={3} />;
 
 	return (
 		<main className="detail-shell app-page">
 			<Link className="text-link inline-flex items-center gap-1.5" href="/app/agents">
 				<span>←</span> All AI Workers
 			</Link>
-
-			{agent.isLoading && <p className="font-mono text-xs text-muted mt-8">Resolving fresh ENS records directly from Sepolia…</p>}
 
 			{agent.error && <div className="notice error mt-4">{agent.error.message}</div>}
 

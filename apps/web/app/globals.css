@@ -981,7 +981,27 @@ button:disabled {
   background: var(--surface);
   padding: 20px;
   transition: all 0.2s ease-out;
-  margin-block: 10;
+}
+
+.agents-directory,
+.audit-list,
+.integration-grid,
+.task-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.agents-directory,
+.audit-list,
+.integration-grid {
+  margin-top: 20px;
 }
 
 .agent-card:hover,
@@ -1087,6 +1107,7 @@ dd {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 16px;
 }
 
 .text-link {
@@ -1714,6 +1735,257 @@ dd {
   grid-column: 1 / -1;
 }
 
+/* --- Tasks, settings, and loading states --- */
+.task-list {
+  margin-top: 8px;
+}
+
+.task-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.task-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.task-card h2 {
+  margin: 0;
+  max-width: 680px;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+.empty-state h2,
+.empty-state p {
+  margin: 0;
+}
+
+.task-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.task-timeline {
+  margin-top: 18px;
+}
+
+.task-danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 18px;
+  border: 1px solid rgba(248, 113, 113, .2);
+  border-radius: 14px;
+  background: rgba(248, 113, 113, .04);
+  padding: 18px;
+}
+
+.task-danger-zone strong,
+.task-danger-zone p {
+  margin: 0;
+}
+
+.task-danger-zone p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.timeline-list {
+  display: grid;
+  gap: 0;
+  margin-top: 18px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 13px;
+  border-top: 1px solid var(--border);
+  padding: 14px 0;
+}
+
+.timeline-item p,
+.timeline-item strong {
+  margin: 0;
+  font-size: 12px;
+}
+
+.timeline-item p {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.timeline-item time {
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.danger-eyebrow {
+  color: #f87171;
+}
+
+.dialog-copy {
+  margin-top: 14px;
+  line-height: 1.6;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 12px 16px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.settings-tabs button.active {
+  border-bottom-color: var(--signal);
+  color: var(--signal);
+}
+
+.settings-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 24px;
+}
+
+.settings-section h2,
+.settings-section p {
+  margin: 0;
+}
+
+.settings-section p.muted {
+  margin-top: 7px;
+}
+
+.settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-fields label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.settings-fields input {
+  min-width: 0;
+  border: 1px solid var(--border-card);
+  border-radius: 9px;
+  background: var(--surface);
+  padding: 12px;
+  color: var(--foreground);
+  font-family: var(--font-satoshi);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.settings-fields input:disabled {
+  color: var(--subtle);
+  cursor: not-allowed;
+}
+
+.app-session-loading {
+  display: grid;
+  gap: 14px;
+  width: min(720px, calc(100% - 48px));
+  margin: 10vh auto;
+}
+
+.skeleton-heading {
+  display: grid;
+  gap: 12px;
+  padding: 36px 0 26px;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.skeleton-card {
+  display: grid;
+  gap: 14px;
+}
+
+.skeleton {
+  display: block;
+  overflow: hidden;
+  border-radius: 7px;
+  background: linear-gradient(90deg, rgba(255,255,255,.04) 20%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 80%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-kicker { width: 130px; height: 10px; }
+.skeleton-title { width: min(360px, 75%); height: 42px; }
+.skeleton-copy { width: min(520px, 92%); height: 14px; }
+.skeleton-line { width: 100%; height: 12px; }
+.skeleton-line-short { width: 35%; }
+.skeleton-line-medium { width: 68%; }
+
+@keyframes skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+
 .worker-catalog {
   margin-top: 32px;
   border-top: 1px solid var(--border);
@@ -1761,6 +2033,17 @@ dd {
 }
 
 /* --- Responsive Breakpoints --- */
+@media (max-width: 1200px) {
+  .app-frame {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .dashboard-shell,
+  .detail-shell {
+    padding-inline: 24px;
+  }
+}
+
 @media (max-width: 1000px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -1788,6 +2071,18 @@ dd {
 
   .agent-input-row {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .task-list,
+  .agents-directory,
+  .audit-list,
+  .integration-grid,
+  .task-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1828,13 +2123,17 @@ dd {
   }
 
   .app-sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 40;
     width: 100%;
     height: auto;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
+    gap: 12px;
     border-right: 0;
     border-bottom: 1px solid var(--border);
+    padding: 12px;
   }
 
   .workspace-switcher,
@@ -1844,7 +2143,27 @@ dd {
   }
 
   .sidebar-nav {
-    margin: 0 0 0 auto;
+    width: 100%;
+    margin: 0;
+    overflow-x: auto;
+  }
+
+  .sidebar-nav a span:not(:first-child) { display: inline; }
+
+  .sidebar-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .sidebar-nav a {
+    min-width: 62px;
+    flex: 1 0 auto;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0 !important;
+    padding: 7px 8px;
+    font-size: 9px;
   }
 
   .sidebar-nav p {
@@ -1852,7 +2171,56 @@ dd {
   }
 
   .form-grid,
-  .agent-input-row {
+  .agent-input-row,
+  .settings-fields,
+  .skeleton-grid {
     grid-template-columns: 1fr;
   }
+
+  .app-topbar {
+    height: auto;
+    min-height: 58px;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .dashboard-shell,
+  .detail-shell {
+    padding-inline: 16px;
+    padding-bottom: 36px;
+  }
+
+  .dashboard-heading,
+  .page-heading,
+  .detail-header,
+  .task-card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .task-danger-zone {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .metric { padding: 16px; }
+  .metric strong { font-size: 25px; }
+  .panel { padding: 18px; }
+  .dialog { padding: 24px; }
+  .timeline-item { grid-template-columns: 10px minmax(0, 1fr); }
+  .timeline-item time { grid-column: 2; }
+}
+
+@media (max-width: 480px) {
+  .metrics-grid { grid-template-columns: 1fr; }
+  .app-topbar > div:first-child { display: none; }
+  .app-topbar { justify-content: flex-end; }
+  .wallet-control { max-width: 100%; }
+  .wallet-gate { margin: 24px 16px; padding: 26px 20px; }
+  .dialog-actions { flex-direction: column-reverse; }
+  .dialog-actions button, .dialog-actions a { width: 100%; justify-content: center; }
+  .activity-row { grid-template-columns: 10px minmax(0, 1fr); }
+  .activity-row time { grid-column: 2; }
 }

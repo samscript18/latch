@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useWalletSession } from "./wallet-session";
+import { PageSkeleton } from "./loading-state";
 
 type StageResult = "passed" | "failed" | "not_run";
 
@@ -31,6 +32,8 @@ export function ActivityView() {
     refetchInterval: 5_000,
   });
 
+  if (activity.isPending) return <PageSkeleton cards={4} />;
+
   return (
     <main className="detail-shell audit-shell app-page">
       <section className="detail-header">
@@ -54,11 +57,6 @@ export function ActivityView() {
       )}
 
       <section className="audit-list" aria-live="polite">
-        {activity.isPending && (
-          <p className="font-mono text-xs text-muted">
-            Fetching cryptographic authorization records…
-          </p>
-        )}
         {activity.data?.map((item) => (
           <article className="audit-card" key={item.id}>
             <div className="flex items-center justify-between border-b border-white/5 pb-3">

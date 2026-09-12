@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -58,6 +59,11 @@ export class TasksController {
   @Get(":id/activity")
   activity(@Param("id") id: string, @Req() req: WalletAuthenticatedRequest) {
     return this.tasks.activity(this.parseId(id), req.walletSession!.address);
+  }
+
+  @Delete(":id")
+  remove(@Param("id") id: string, @Req() req: WalletAuthenticatedRequest) {
+    return this.tasks.remove(this.parseId(id), req.walletSession!.address);
   }
 
   private parseId(id: string): string {
