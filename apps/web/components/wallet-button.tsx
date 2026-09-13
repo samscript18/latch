@@ -105,7 +105,9 @@ export function WalletButton() {
 											key={connector.uid}
 											disabled={isConnecting}
 											onClick={() => {
-												void connectAsync({ connector, chainId: hackathonSepolia.id }).then(() => setChooserOpen(false));
+												void connectAsync({ connector, chainId: hackathonSepolia.id })
+													.then(() => setChooserOpen(false))
+													.catch(() => undefined);
 											}}
 										>
 											<span className="wallet-option-icon">
@@ -119,7 +121,7 @@ export function WalletButton() {
 											</span>
 											<span>
 												<strong>{connector.name}</strong>
-												<small>{connector.type === "walletConnect" ? "Scan with a mobile wallet" : "Browser or installed wallet"}</small>
+												<small>Browser or installed wallet</small>
 											</span>
 											<span aria-hidden="true">→</span>
 										</button>
@@ -127,7 +129,7 @@ export function WalletButton() {
 								</div>
 								{!availableConnectors.length ? <p className="wallet-modal-empty">No compatible wallet provider was detected.</p> : null}
 								{connectError ? <p className="wallet-modal-error">{connectError.message}</p> : null}
-								<p className="wallet-modal-footnote">New to Ethereum wallets? Install MetaMask, Rabby, Coinbase Wallet, or configure WalletConnect.</p>
+								<p className="wallet-modal-footnote">New to Ethereum wallets? Install MetaMask, Rabby, Coinbase Wallet, or another EIP-6963 compatible wallet.</p>
 							</div>
 						</section>
 					</div>
