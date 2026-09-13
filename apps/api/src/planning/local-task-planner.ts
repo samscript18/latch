@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { PlannedActionSchema, type PlannedAction } from "@latch/shared";
-import { inferExplicitCapability } from "./prompt-intent.js";
+import { inferExplicitCapability, readQuantity } from "./prompt-intent.js";
 import type { TaskPlanner } from "./task-planner.interface.js";
 
 @Injectable()
 export class LocalTaskPlanner implements TaskPlanner {
   async plan(prompt: string): Promise<PlannedAction> {
     const normalized = prompt.trim();
-    const quantity = Number(/\b(\d+)\b/.exec(normalized)?.[1] ?? 1);
+    const quantity = readQuantity(normalized);
     const explicitCapability = inferExplicitCapability(normalized);
     if (explicitCapability === "research.search") {
       return PlannedActionSchema.parse({

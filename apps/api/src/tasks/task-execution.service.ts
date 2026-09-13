@@ -42,6 +42,7 @@ import {
   TASK_PLANNER,
   type TaskPlanner,
 } from "../planning/task-planner.interface.js";
+import { detectPhysicalProductFamily } from "../planning/physical-product.js";
 
 const validTransitions: Record<TaskStatus, readonly TaskStatus[]> = {
   created: ["planning"],
@@ -664,12 +665,11 @@ export class TaskExecutionService {
   }
 
   private matchesRequestedProductFamily(query: string, productName: string) {
-    const families = [
-      /\b(tablet|ipad|galaxy\s+tab|surface\s+pro)s?\b/i,
-      /\b(monitors?|displays?|screens?)\b/i,
-    ];
-    const requestedFamily = families.find((family) => family.test(query));
-    return !requestedFamily || requestedFamily.test(productName);
+    const requestedFamily = detectPhysicalProductFamily(query);
+    return (
+      !requestedFamily ||
+      requestedFamily === detectPhysicalProductFamily(productName)
+    );
   }
 
   private async assertTaskOwner(taskId: string, ownerWallet?: Address) {

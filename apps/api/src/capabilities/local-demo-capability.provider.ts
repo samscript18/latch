@@ -5,6 +5,10 @@ import type {
   ProductCandidate,
   PurchaseInput,
 } from "./capability-provider.interface.js";
+import {
+  detectPhysicalProductFamily,
+  type PhysicalProductFamily,
+} from "../planning/physical-product.js";
 
 const standardMonitor: ProductCandidate = {
   id: "fixture-monitor-standard",
@@ -46,14 +50,47 @@ const premiumTablet: ProductCandidate = {
   productUrl: "https://www.samsung.com/us/tablets/",
 };
 
+const standardProducts: Partial<
+  Record<PhysicalProductFamily, ProductCandidate>
+> = {
+  monitor: standardMonitor,
+  tablet: standardTablet,
+  laptop: {
+    id: "fixture-laptop-standard",
+    name: "Standard Office Laptop",
+    vendor: "demo-vendor-a",
+    unitPriceCents: 79_900,
+    currency: "USD",
+    source: "local-fixture",
+    productUrl:
+      "https://www.dell.com/en-us/shop/dell-laptops-and-2-in-1-pcs/scr/laptops",
+  },
+};
+
+const premiumProducts: Partial<
+  Record<PhysicalProductFamily, ProductCandidate>
+> = {
+  monitor: premiumMonitor,
+  tablet: premiumTablet,
+  laptop: {
+    id: "fixture-laptop-premium",
+    name: "Premium Professional Laptop",
+    vendor: "demo-vendor-a",
+    unitPriceCents: 149_900,
+    currency: "USD",
+    source: "local-fixture",
+    productUrl:
+      "https://www.dell.com/en-us/shop/dell-laptops-and-2-in-1-pcs/scr/laptops",
+  },
+};
+
 @Injectable()
 export class LocalDemoCapabilityProvider implements CapabilityProvider {
   async searchProducts(query: string): Promise<ProductCandidate[]> {
-    const products = /\b(tablet|ipad|galaxy\s+tab|surface\s+pro)s?\b/i.test(query)
-      ? [standardTablet, premiumTablet]
-      : /\b(monitors?|displays?|screens?)\b/i.test(query)
-        ? [standardMonitor, premiumMonitor]
-        : [];
+    const family = detectPhysicalProductFamily(query);
+    const standard = family ? standardProducts[family] : undefined;
+    const premium = family ? premiumProducts[family] : undefined;
+    const products = standard && premium ? [standard, premium] : [];
     return /\b(premium|professional)\b/i.test(query)
       ? [...products].reverse()
       : products;
