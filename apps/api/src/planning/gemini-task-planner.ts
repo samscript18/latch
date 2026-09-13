@@ -7,6 +7,7 @@ import { ConfigService } from "@nestjs/config";
 import { GoogleGenAI } from "@google/genai";
 import { PlannedActionSchema, type PlannedAction } from "@latch/shared";
 import type { Environment } from "../config/environment.js";
+import { reconcilePlannedAction } from "./prompt-intent.js";
 import type { TaskPlanner } from "./task-planner.interface.js";
 
 const plannedActionJsonSchema = {
@@ -61,6 +62,8 @@ export class GeminiTaskPlanner implements TaskPlanner {
       config: {
         systemInstruction:
           "Convert the request into one proposed LATCH action. You may only select a listed capability. " +
+          "Procurement includes finding, sourcing, comparing, buying, purchasing, or ordering physical products such as office monitors and tablets, even when the user says 'find' rather than 'buy'. " +
+          "Research means gathering information, web sources, articles, papers, or reports; never classify physical-product sourcing as research. " +
           "For procurement return productQuery and quantity. For research return query, optional domains, and maxResults. " +
           "For research, use an empty domains array unless the user explicitly names domains, and default maxResults to 5. " +
           "You propose intent only and must never claim authorization, a policy verdict, an ENS role, or a price.",
@@ -71,7 +74,8 @@ export class GeminiTaskPlanner implements TaskPlanner {
     if (!response.text)
       throw new ServiceUnavailableException("Vertex AI returned no plan");
     try {
-      return PlannedActionSchema.parse(JSON.parse(response.text));
+      const planned = PlannedActionSchema.parse(JSON.parse(response.text));
+      return reconcilePlannedAction(prompt, planned);
     } catch {
       throw new ServiceUnavailableException(
         "Vertex AI returned an invalid structured plan",
