@@ -26,11 +26,37 @@ const premiumMonitor: ProductCandidate = {
   productUrl: "https://www.dell.com/en-us/shop/computer-monitors/ar/4009",
 };
 
+const standardTablet: ProductCandidate = {
+  id: "fixture-tablet-standard",
+  name: "Standard Office Tablet",
+  vendor: "demo-vendor-a",
+  unitPriceCents: 18_900,
+  currency: "USD",
+  source: "local-fixture",
+  productUrl: "https://www.samsung.com/us/tablets/",
+};
+
+const premiumTablet: ProductCandidate = {
+  id: "fixture-tablet-premium",
+  name: "Premium Professional Tablet",
+  vendor: "demo-vendor-a",
+  unitPriceCents: 47_000,
+  currency: "USD",
+  source: "local-fixture",
+  productUrl: "https://www.samsung.com/us/tablets/",
+};
+
 @Injectable()
 export class LocalDemoCapabilityProvider implements CapabilityProvider {
   async searchProducts(query: string): Promise<ProductCandidate[]> {
-    const products = [standardMonitor, premiumMonitor];
-    return /premium|professional/i.test(query) ? products.reverse() : products;
+    const products = /\b(tablet|ipad|galaxy\s+tab|surface\s+pro)s?\b/i.test(query)
+      ? [standardTablet, premiumTablet]
+      : /\b(monitors?|displays?|screens?)\b/i.test(query)
+        ? [standardMonitor, premiumMonitor]
+        : [];
+    return /\b(premium|professional)\b/i.test(query)
+      ? [...products].reverse()
+      : products;
   }
 
   async executePurchase(input: PurchaseInput): Promise<ExecutionResult> {

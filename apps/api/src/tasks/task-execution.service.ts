@@ -653,10 +653,23 @@ export class TaskExecutionService {
 
   private async selectProduct(query: string): Promise<ProductCandidate> {
     const products = await this.capability.searchProducts(query);
-    const product = products[0];
+    const product = products.find((candidate) =>
+      this.matchesRequestedProductFamily(query, candidate.name),
+    );
     if (!product)
-      throw new BadRequestException("No product candidate was returned");
+      throw new BadRequestException(
+        "No product candidate matched the requested product",
+      );
     return product;
+  }
+
+  private matchesRequestedProductFamily(query: string, productName: string) {
+    const families = [
+      /\b(tablet|ipad|galaxy\s+tab|surface\s+pro)s?\b/i,
+      /\b(monitors?|displays?|screens?)\b/i,
+    ];
+    const requestedFamily = families.find((family) => family.test(query));
+    return !requestedFamily || requestedFamily.test(productName);
   }
 
   private async assertTaskOwner(taskId: string, ownerWallet?: Address) {
