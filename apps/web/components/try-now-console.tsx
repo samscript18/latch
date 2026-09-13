@@ -59,7 +59,7 @@ interface RunResult {
 }
 
 const exampleByRole = {
-	procurement: "Buy 2 standard office monitors for our new office",
+	procurement: "Find 2 standard office monitors for our new office",
 	research: "Research current AI security standards and find reliable sources",
 } as const;
 
